@@ -1,5 +1,5 @@
 /* =====================================================================
-   FireSpace GX · estilos globales
+   FireSpace GX · global styles
    ===================================================================== */
 :root {
   --sidebar: #05071c;
@@ -105,7 +105,7 @@ svg { display: block; }
 }
 .sidebar__toggle svg { width: 24px; height: 24px; fill: none; stroke: var(--naranja); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform .28s; }
 
-/* estado contraído */
+/* collapsed state */
 .sb-contraida .sidebar { padding: 14px 4px; align-items: center; }
 .sb-contraida .sidebar__logo,
 .sb-contraida .nav-item__texto { display: none; }
@@ -117,7 +117,7 @@ svg { display: block; }
 .sb-contraida .sidebar__toggle svg { transform: rotate(180deg); }
 .sb-contraida .sidebar__toggle { right: -30px; }
 
-/* ----------------------------------------------------------- comunes */
+/* ----------------------------------------------------------- common */
 .mascota { display: block; }
 .titulo-marca {
   font-family: var(--fuente-titulo); font-weight: 600;
@@ -141,7 +141,7 @@ svg { display: block; }
 }
 .aviso-demo { font-size: 12px; color: var(--texto-3); }
 
-/* Pill de preguntar */
+/* Ask pill */
 .pill {
   display: flex; align-items: center; gap: 14px;
   background: var(--pill); color: var(--pill-texto);
@@ -165,7 +165,7 @@ svg { display: block; }
   padding: 3px 10px; border-radius: 20px; white-space: nowrap;
 }
 
-/* ----------------------------------------------------------- tarjetas de gráfica */
+/* ----------------------------------------------------------- chart cards */
 .grafica {
   margin: 0; background: var(--panel-2); border: 1px solid #141a44;
   border-radius: var(--radio); padding: 14px 14px 12px;
@@ -187,7 +187,7 @@ svg { display: block; }
 .grafica__leyenda strong { color: var(--naranja-2); font-weight: 600; }
 .grafica.leyenda-oculta .grafica__leyenda { display: none; }
 
-/* KPI anillos */
+/* KPI rings */
 .kpis { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
 .kpi { text-align: center; }
 .kpi__anillo { position: relative; width: 104px; height: 104px; }
@@ -199,7 +199,7 @@ svg { display: block; }
   padding: 3px 14px; font-weight: 700; font-size: 12px; letter-spacing: .06em;
 }
 
-/* Barras de progreso (límites de inflamabilidad) */
+/* Progress bars (flammability limits) */
 .rangos { display: flex; flex-direction: column; gap: 12px; margin: 8px 0; }
 .rango__cab { display: flex; justify-content: space-between; font-size: 11px; color: var(--texto-2); margin-bottom: 4px; letter-spacing: .05em; text-transform: uppercase; }
 .rango__pista { position: relative; height: 10px; background: #121a46; border-radius: 10px; }
@@ -209,7 +209,7 @@ svg { display: block; }
 }
 
 /* ======================================================================
-   INICIO
+   HOME
    ====================================================================== */
 .pagina-inicio .contenido {
   background: linear-gradient(180deg, var(--hero-1) 0%, #3f418a 30%, var(--hero-2) 62%, #191a33 100%);
@@ -265,7 +265,7 @@ svg { display: block; }
 .pagina-asistente .contenido { background: var(--fondo); overflow: hidden; }
 .asistente { height: 100%; position: relative; }
 
-/* --- estado inicial --- */
+/* --- initial state --- */
 .bienvenida {
   height: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center;
   padding: 36px 24px; text-align: center;
@@ -290,7 +290,7 @@ svg { display: block; }
 .chip:hover { border-color: var(--naranja); color: #fff; }
 .chip[aria-pressed="true"] { background: var(--naranja); border-color: var(--naranja); color: #fff; }
 
-/* --- conversación + dashboard --- */
+/* --- conversation + dashboard --- */
 .sesion { display: none; height: 100%; grid-template-columns: minmax(0, 1fr) 330px; }
 .asistente.con-chat .bienvenida { display: none; }
 .asistente.con-chat .sesion { display: grid; }
@@ -318,7 +318,7 @@ svg { display: block; }
 .chat__entrada { padding: 12px 28px 22px; position: relative; }
 .chat__entrada .pill { max-width: 520px; }
 
-/* menú de modos (filtro) */
+/* modes menu (filter) */
 .menu-modos {
   position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 20;
   background: #121433; border: 1px solid #2b2f66; border-radius: 12px; padding: 6px; min-width: 240px;
@@ -329,7 +329,7 @@ svg { display: block; }
 .bienvenida .menu-wrap { position: relative; width: min(410px, 100%); }
 .bienvenida .menu-modos { top: calc(100% + 8px); bottom: auto; }
 
-/* panel dashboard */
+/* dashboard panel */
 .dash { background: var(--panel); position: relative; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
 .dash__grid > * { min-width: 0; }
 .dash__toggle {
@@ -344,7 +344,7 @@ svg { display: block; }
 .dash__grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
 .dash__vacio { color: var(--texto-3); text-align: center; font-size: 14px; padding: 40px 10px; }
 
-/* controles del dashboard */
+/* dashboard controls */
 .controles { background: var(--panel-2); border: 1px solid #141a44; border-radius: var(--radio); padding: 14px; }
 .controles h3 { margin: 0 0 10px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--texto-2); }
 .controles__chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
@@ -355,14 +355,14 @@ svg { display: block; }
 .estado-riesgo.peligro { background: rgba(255,77,94,.15); color: #ffb3bb; border: 1px solid rgba(255,77,94,.4); }
 .estado-riesgo.precaucion { background: rgba(255,201,60,.12); color: #ffe29a; border: 1px solid rgba(255,201,60,.35); }
 
-/* rango estilizado */
+/* styled range input */
 input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 18px; background: transparent; }
 input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--naranja); }
 input[type="range"]::-moz-range-track { height: 2px; background: var(--naranja); }
 input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--naranja); margin-top: -6px; border: 0; }
 input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--naranja); border: 0; }
 
-/* dashboard expandido (apigx 3) */
+/* expanded dashboard (apigx 3) */
 .asistente.dash-abierto .sesion { grid-template-columns: 0 minmax(0, 1fr); }
 .asistente.dash-abierto .chat { visibility: hidden; }
 .asistente.dash-abierto .dash__toggle { left: 0; border-radius: 0 26px 26px 0; padding: 0 4px 0 0; }
@@ -374,7 +374,7 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 .asistente.dash-abierto .grafica__lienzo { height: 200px; }
 
 /* ======================================================================
-   SIMULACIÓN 3D
+   3D SIMULATION
    ====================================================================== */
 .pagina-simulacion .contenido { background: #3b3b3b; overflow: hidden; }
 .escena { position: absolute; inset: 0; }
@@ -453,11 +453,11 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 .chat__toggle-movil { display: none; margin-left: auto; }
 
 /* ======================================================================
-   Integración con FireSpaceGX (asistente con fuentes y simulación Plotly)
+   FireSpaceGX integration (assistant with sources and Plotly simulation)
    ====================================================================== */
 [hidden] { display: none !important; }
 
-/* respuestas del asistente */
+/* assistant answers */
 .msg__cuerpo { min-width: 0; }
 .msg ul { margin: 0 0 10px; padding-left: 20px; }
 .msg li { margin-bottom: 4px; }
@@ -475,12 +475,12 @@ a.cita:hover { background: var(--naranja); color: #fff; }
 .fuentes-msg a { color: var(--naranja-2); }
 .pill__enviar:disabled { opacity: .5; cursor: wait; }
 
-/* menú de tipos de pregunta dentro del chat */
+/* question types menu inside the chat */
 .menu-modos { width: min(520px, 100%); }
 .ejemplos--menu { margin: 6px 0 4px; justify-content: flex-start; padding: 0 8px; }
 .dash__grid[hidden] { display: none !important; }
 
-/* simulación con Plotly */
+/* Plotly simulation */
 .pagina-simulacion .escena { z-index: 1; }
 .pagina-simulacion .panel-sliders { top: 78px; max-height: calc(55vh - 78px); }
 .panel-sliders .mini { color: #aaa; }
@@ -498,7 +498,7 @@ a.cita:hover { background: var(--naranja); color: #fff; }
   .resultado { grid-template-columns: 1fr; gap: 2px; }
   .resultado dt { margin-top: 4px; }
 }
-/* Mascota sobre círculo naranja (imagen con fondo transparente) */
+/* Mascot on an orange circle (image with transparent background) */
 .mascota {
   background: var(--naranja);
   border-radius: 50%;
@@ -507,7 +507,7 @@ a.cita:hover { background: var(--naranja); color: #fff; }
 }
 .hero .mascota { width: 160px; height: 160px; }
 /* ======================================================================
-   Panel de la IA en ApiGx (tablero que diseña el servidor: kpis, pasos,
+   AI dashboard in ApiGx (designed by the server: kpis, pasos,
    comparacion, lista, linea_tiempo, dato, tabla, grafica)
    ====================================================================== */
 .panel-ia { display: flex; flex-direction: column; gap: 12px; }
@@ -570,7 +570,7 @@ a.cita:hover { background: var(--naranja); color: #fff; }
 .pia-barra__fondo { background: #121a46; border-radius: 6px; height: 8px; margin-top: 3px; }
 .pia-barra__relleno { background: var(--naranja); border-radius: 6px; height: 8px; }
 
-/* dashboard expandido: el panel de la IA ocupa todo el ancho y sus bloques van en columnas */
+/* expanded dashboard: the AI dashboard takes the full width and its blocks go in columns */
 .asistente.dash-abierto .dash__grid > .completa { grid-column: 1 / -1; }
 .asistente.dash-abierto .panel-ia__bloques { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 .asistente.dash-abierto .pia-bloque--tabla,
@@ -581,15 +581,15 @@ a.cita:hover { background: var(--naranja); color: #fff; }
 }
 
 /* ======================================================================
-   Ajustes v3: inicio (texto justificado), menú con Inicio y 3GX en columnas
+   v3 adjustments: home (justified text), menu with Home, and 3GX in columns
    ====================================================================== */
 
-/* --- Inicio: texto más grande y justificado --- */
+/* --- Home: bigger, justified text --- */
 .hero__texto { font-size: 17.5px; line-height: 1.6; max-width: 720px; text-align: justify; hyphens: auto; }
 .hero__texto p { margin-bottom: 22px; }
 .paso p { text-align: justify; hyphens: auto; font-size: 15px; }
 
-/* --- Menú lateral: marca a la izquierda + opción Inicio alineada con Apigx y 3GX --- */
+/* --- Side menu: brand on the left + Home option aligned with Apigx and 3GX --- */
 .sidebar__logo {
   display: flex; align-items: center; gap: 8px;
   text-align: left; padding: 0 0 0 6px; font-size: 16px; margin-bottom: 22px;
@@ -616,7 +616,7 @@ a.cita:hover { background: var(--naranja); color: #fff; }
 .sb-contraida .icono-inicio svg { width: 16px; height: 16px; }
 .sb-contraida .nav-item.activo::before { left: -4px; }
 
-/* --- 3GX: visor + columna lateral --- */
+/* --- 3GX: viewer + side column --- */
 .pagina-simulacion .contenido { overflow: hidden; }
 .sim { display: grid; grid-template-columns: minmax(0, 1fr) 360px; height: 100%; }
 .sim__visor { position: relative; min-width: 0; min-height: 0; }
@@ -655,10 +655,10 @@ a.cita:hover { background: var(--naranja); color: #fff; }
 .sim-ia__texto ul { margin: 0 0 8px; padding-left: 18px; font-size: 13px; line-height: 1.5; color: var(--texto-2); }
 .sim-ia__texto li { margin-bottom: 4px; }
 .nivel { display: inline-block; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 20px; margin-bottom: 10px; letter-spacing: .03em; }
-.nivel--alto { background: rgba(255,77,94,.18); color: #ff9aa5; border: 1px solid rgba(255,77,94,.5); }
-.nivel--moderado { background: rgba(255,201,60,.14); color: #ffe29a; border: 1px solid rgba(255,201,60,.45); }
-.nivel--bajo { background: rgba(61,220,151,.14); color: #9ff0c9; border: 1px solid rgba(61,220,151,.45); }
-.nivel--sin-datos { background: rgba(255,255,255,.08); color: var(--texto-2); border: 1px solid #45454f; }
+.nivel--high { background: rgba(255,77,94,.18); color: #ff9aa5; border: 1px solid rgba(255,77,94,.5); }
+.nivel--moderate { background: rgba(255,201,60,.14); color: #ffe29a; border: 1px solid rgba(255,201,60,.45); }
+.nivel--low { background: rgba(61,220,151,.14); color: #9ff0c9; border: 1px solid rgba(61,220,151,.45); }
+.nivel--no-data { background: rgba(255,255,255,.08); color: var(--texto-2); border: 1px solid #45454f; }
 
 @media (max-width: 900px) {
   .pagina-simulacion .contenido { overflow-y: auto; }

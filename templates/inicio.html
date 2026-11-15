@@ -1,138 +1,137 @@
 {% extends "base.html" %}
 {% from '_macros.html' import mascota, grafica %}
 
-{% block titulo %}Inicio · FireSpace GX{% endblock %}
+{% block titulo %}Home · FireSpace GX{% endblock %}
 
 {% block contenido %}
-<!-- ============================ PRESENTACIÓN ============================ -->
+<!-- ============================ INTRODUCTION ============================ -->
 <section class="hero">
   {{ mascota() }}
   <h1 class="titulo-marca">FireSpace GX</h1>
 
   <div class="hero__texto">
     <p>
-      <strong>Llama en caída libre.</strong> FireSpace GX es una plataforma de investigación y análisis de
-      seguridad contra incendios en el espacio. Reúne los experimentos de combustión en microgravedad de NASA
-      —ACME, FLEX, SAFFIRE, BASS y más— para que puedas consultarlos, comparar materiales, identificar
-      patrones de combustión y usar inteligencia artificial para anticipar posibles escenarios de incendio.
+      <strong>Flame in free fall.</strong> FireSpace GX is a research and analysis platform for fire safety
+      in space. It brings together NASA's microgravity combustion experiments —ACME, FLEX, SAFFIRE, BASS and
+      more— so you can explore them, compare materials, identify combustion patterns and use artificial
+      intelligence to anticipate possible fire scenarios.
     </p>
     <p>
-      Está pensada para la comunidad científica, estudiantes de posgrado e ingenieros aeroespaciales que
-      diseñan las zonas habitables de la tripulación: estaciones espaciales, naves, bases lunares, superficies
-      marcianas y vehículos presurizados. Nuestro objetivo: convertir datos complejos en respuestas claras y
-      hacer que el próximo gran salto sea más seguro.
+      It is designed for the scientific community, graduate students and aerospace engineers who design the
+      crew's living areas: space stations, spacecraft, lunar bases, Martian surfaces and pressurized vehicles.
+      Our goal: turn complex data into clear answers and make the next giant leap a safer one.
     </p>
   </div>
 
   <div class="hero__cta">
-    <a class="boton boton--primario" href="{{ url_for('asistente') }}">Preguntar a ApiGx</a>
-    <a class="boton boton--secundario" href="#tutorial">Ver cómo funciona ↓</a>
+    <a class="boton boton--primario" href="{{ url_for('asistente') }}">Ask ApiGx</a>
+    <a class="boton boton--secundario" href="#tutorial">See how it works ↓</a>
   </div>
 </section>
 
 <!-- ============================ TUTORIAL ============================ -->
 <section class="seccion" id="tutorial">
-  <span class="etiqueta">Tutorial de uso</span>
-  <h2 class="seccion-titulo">¿Qué puedes hacer aquí?</h2>
-  <p class="seccion-sub">Tres herramientas conectadas que van de la pregunta al dato, y del dato a la intuición física.</p>
+  <span class="etiqueta">How to use it</span>
+  <h2 class="seccion-titulo">What can you do here?</h2>
+  <p class="seccion-sub">Three connected tools that take you from the question to the data, and from the data to physical intuition.</p>
 
   <div class="pasos">
     <article class="paso">
       <div class="paso__icono">{{ mascota() }}</div>
-      <h3>Pregunta a ApiGx</h3>
+      <h3>Ask ApiGx</h3>
       <p>
-        Escribe en lenguaje natural, por ejemplo: <em>«háblame del comportamiento de las llamas de metanol»</em>.
-        Elige el modo con el botón de filtro: <strong>Consultar</strong>, <strong>Investigaciones</strong> o
-        <strong>Resultados</strong>. ApiGx responde y te sugiere qué investigaciones explorar después.
+        Write in natural language, for example: <em>"tell me how methanol flames behave"</em>.
+        Pick a mode with the filter button: <strong>Ask</strong>, <strong>Research</strong> or
+        <strong>Results</strong>. ApiGx answers and suggests which research to explore next.
       </p>
-      <p class="paso__valor">Valor: encuentras en segundos los experimentos relevantes sin leer cientos de reportes.</p>
+      <p class="paso__valor">Value: you find the relevant experiments in seconds without reading hundreds of reports.</p>
     </article>
 
     <article class="paso">
       <div class="paso__icono">
         <svg viewBox="0 0 44 44" fill="none" stroke="#ff7a1a" stroke-width="2.4" stroke-linecap="round"><path d="M6 36h32M10 30V18M18 30V10M26 30V22M34 30V14"/></svg>
       </div>
-      <h3>Explora el dashboard en vivo</h3>
+      <h3>Explore the live dashboard</h3>
       <p>
-        Mientras conversas, ApiGx arma un dashboard con los datos recopilados. Filtra combustibles, mueve la
-        <strong>cantidad</strong> y la <strong>concentración de O₂</strong> y observa cuándo una gráfica cruza el
-        umbral de riesgo. Despliega el panel con la flecha <span aria-hidden="true">‹</span> para verlo completo.
+        While you chat, ApiGx builds a dashboard with the data it gathers. Filter fuels, move the
+        <strong>amount</strong> and the <strong>O₂ concentration</strong> and watch when a chart crosses the
+        risk threshold. Expand the panel with the <span aria-hidden="true">‹</span> arrow to see it in full.
       </p>
-      <p class="paso__valor">Valor: identificas patrones y picos de riesgo entre experimentos, compuestos y gravedades.</p>
+      <p class="paso__valor">Value: you spot patterns and risk peaks across experiments, compounds and gravity levels.</p>
     </article>
 
     <article class="paso">
       <div class="paso__icono">
         <svg class="icono-cubo" viewBox="0 0 48 48"><path class="cubo-borde" d="M24 3 42 13.5v21L24 45 6 34.5v-21z"/><path d="M24 12 34 17.5v13L24 36l-10-5.5v-13zM14 17.5 24 23l10-5.5M24 23v13"/></svg>
       </div>
-      <h3>Manipula la llama en 3D</h3>
+      <h3>Play with the flame in 3D</h3>
       <p>
-        En <strong>3GX</strong> eliges un filtro (condiciones, compuestos de PSI-68 o entorno de misión) y
-        aparecen deslizadores. Por ejemplo, etanol en 0.5: la llama cambia de forma y de color, y ApiGx
-        interpreta con las investigaciones de NASA si esa llama es peligrosa, por qué y qué hacer.
+        In <strong>3GX</strong> you pick a filter (conditions, PSI-68 compounds or mission environment) and
+        sliders appear. For example, ethanol at 0.5: the flame changes its shape and color, and ApiGx uses
+        NASA research to explain whether that flame is dangerous, why, and what to do.
       </p>
-      <p class="paso__valor">Valor: alimentas modelos predictivos de inflamabilidad con una intuición visual inmediata.</p>
+      <p class="paso__valor">Value: you feed predictive flammability models with immediate visual intuition.</p>
     </article>
   </div>
 </section>
 
-<!-- ============================ DASHBOARD DE EJEMPLO ============================ -->
+<!-- ============================ SAMPLE DASHBOARD ============================ -->
 <section class="seccion" id="ejemplo">
   <div class="dash-ejemplo">
     <div class="dash-ejemplo__cab">
       <div>
-        <span class="etiqueta">Consulta preliminar</span>
-        <h2 class="titulo-dash" style="margin-top:8px">Dashboard · Compuestos del experimento PSI-68</h2>
-        <p class="aviso-demo" id="avisoDemo">Datos demostrativos.</p>
+        <span class="etiqueta">Preliminary query</span>
+        <h2 class="titulo-dash" style="margin-top:8px">Dashboard · Compounds of experiment PSI-68</h2>
+        <p class="aviso-demo" id="avisoDemo">Demo data.</p>
       </div>
       <p class="seccion-sub" style="margin:0;max-width:380px;font-size:13px" id="resumenPico">
-        Calculando el pico de riesgo…
+        Calculating the risk peak…
       </p>
     </div>
 
     <div class="grid-dash">
       <div class="col-8">
-        {{ grafica('gCalor', 'Liberación de calor por ensayo',
-          'cada línea es un compuesto y cada punto un ensayo (E1–E8), ordenados de menor a mayor O₂. Si una línea entra en la franja roja superior, ese ensayo superó el umbral de riesgo (70/100). Cuanto más pronto la cruza, más peligroso es el compuesto.') }}
+        {{ grafica('gCalor', 'Heat release per test',
+          'each line is a compound and each point a test (T1–T8), sorted from lowest to highest O₂. If a line enters the red band at the top, that test exceeded the risk threshold (70/100). The sooner it crosses it, the more dangerous the compound.') }}
       </div>
       <div class="col-4">
         <figure class="grafica">
-          <figcaption class="grafica__titulo">Pico máximo por compuesto
-            <button class="grafica__ayuda" type="button" aria-label="Cómo interpretar" data-ayuda>?</button>
+          <figcaption class="grafica__titulo">Peak value per compound
+            <button class="grafica__ayuda" type="button" aria-label="How to read it" data-ayuda>?</button>
           </figcaption>
           <div class="kpis" id="kpisEjemplo" style="margin:10px 0"></div>
-          <p class="grafica__leyenda"><strong>Cómo leerla:</strong> el número central es el valor más alto
-            alcanzado en toda la investigación (sobre 100). Anillo naranja/rojo = superó el umbral; azul = se mantuvo seguro.</p>
+          <p class="grafica__leyenda"><strong>How to read it:</strong> the number in the middle is the highest value
+            reached in the whole investigation (out of 100). Orange/red ring = it exceeded the threshold; blue = it stayed safe.</p>
         </figure>
       </div>
 
       <div class="col-5">
-        {{ grafica('gComponentes', 'Composición del índice de riesgo',
-          'cada barra apilada descompone el índice de un compuesto: volatilidad (qué tan fácil se evapora), reactividad (qué tan bajo es su límite inferior de inflamabilidad), rango inflamable y energía liberada. Una barra alta dominada por volatilidad indica riesgo de ignición rápida.') }}
+        {{ grafica('gComponentes', 'Breakdown of the risk index',
+          'each stacked bar breaks down the index of a compound: volatility (how easily it evaporates), reactivity (how low its lower flammability limit is), flammable range and energy released. A tall bar dominated by volatility means a risk of fast ignition.') }}
       </div>
       <div class="col-7">
-        {{ grafica('gOxigeno', 'Sensibilidad al oxígeno',
-          'el eje horizontal es la concentración de O₂ del ensayo y el vertical la liberación de calor. El tamaño del punto crece con el riesgo. Una pendiente pronunciada significa que el compuesto es muy sensible a atmósferas enriquecidas, como la de 34% O₂ propuesta para naves de exploración.') }}
+        {{ grafica('gOxigeno', 'Sensitivity to oxygen',
+          'the horizontal axis is the O₂ concentration of the test and the vertical axis the heat release. The point size grows with the risk. A steep slope means the compound is very sensitive to enriched atmospheres, such as the 34% O₂ proposed for exploration spacecraft.') }}
       </div>
 
       <div class="col-12">
         <figure class="grafica">
-          <figcaption class="grafica__titulo">Rango de inflamabilidad en aire (% en volumen)
-            <button class="grafica__ayuda" type="button" aria-label="Cómo interpretar" data-ayuda>?</button>
+          <figcaption class="grafica__titulo">Flammability range in air (% by volume)
+            <button class="grafica__ayuda" type="button" aria-label="How to read it" data-ayuda>?</button>
           </figcaption>
           <div class="rangos" id="rangosEjemplo"></div>
-          <p class="grafica__leyenda"><strong>Cómo leerla:</strong> la barra empieza en el límite inferior (LFL)
-            y termina en el superior (UFL). Entre ambos la mezcla vapor-aire puede encenderse. Una barra que empieza
-            muy a la izquierda indica que basta una fuga pequeña; una barra larga, que el peligro persiste en un rango amplio.</p>
+          <p class="grafica__leyenda"><strong>How to read it:</strong> the bar starts at the lower limit (LFL)
+            and ends at the upper limit (UFL). Between both, the vapor-air mixture can ignite. A bar that starts
+            far to the left means a small leak is enough; a long bar means the danger persists over a wide range.</p>
         </figure>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ============================ FUENTES ============================ -->
+<!-- ============================ SOURCES ============================ -->
 <section class="seccion" style="padding-top:0">
-  <h2 class="seccion-titulo">Fuentes de información</h2>
+  <h2 class="seccion-titulo">Sources of information</h2>
   <ul class="fuentes">
     <li><a href="https://psi.nasa.gov/physci/repo/search?q=combustion" target="_blank" rel="noopener noreferrer">NASA Physical Sciences Informatics (PSI) ↗</a></li>
     <li><a href="https://ntrs.nasa.gov/" target="_blank" rel="noopener noreferrer">NASA Technical Reports Server (NTRS) ↗</a></li>
@@ -140,14 +139,14 @@
     <li><a href="https://www.nasa.gov/missions/station/a-researchers-guide-to-combustion-science/" target="_blank" rel="noopener noreferrer">A Researcher's Guide to ISS Combustion Science ↗</a></li>
   </ul>
   <p class="aviso">
-    FireSpace GX es un proyecto universitario para el NASA Space Apps Challenge 2026 y no es un producto
-    oficial de NASA. Verifica siempre la información en las fuentes originales.
+    FireSpace GX is a university project for the NASA Space Apps Challenge 2026 and is not an official
+    NASA product. Always check the information in the original sources.
   </p>
 </section>
 {% endblock %}
 
 {% block scripts %}
-<!-- Chart.js desde CDN (si prefieres local: descárgalo en static/vendor/ y cambia esta línea) -->
+<!-- Chart.js from a CDN (to use it locally: download it into static/vendor/ and change this line) -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="{{ url_for('static', filename='js/inicio.js') }}"></script>
 {% endblock %}

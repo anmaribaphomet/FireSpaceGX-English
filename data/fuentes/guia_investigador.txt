@@ -1,6 +1,6 @@
 TITULO: A Researcher's Guide to: Combustion Science
 URL: https://www.nasa.gov/missions/station/a-researchers-guide-to-combustion-science/
-VIA: Lista oficial del reto
+VIA: Official challenge list
 ANIO: 2015
 ---
 === PAGINA 1 ===

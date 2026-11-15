@@ -1,21 +1,21 @@
 /* =====================================================================
-   FireSpace GX · Asistente IA (ApiGx)
-   La lógica de conversación es la misma de antes:
-     - POST /api/preguntar con {pregunta, historial}
-     - memoria del último intercambio en sessionStorage
-     - fuentes citadas con enlace al documento original
-   Además:
-     - el tablero "panel" que diseña la IA en el servidor (campo `panel`
-       de /api/preguntar: {titulo, bloques}) se dibuja arriba del dashboard
-       y se recuerda en sessionStorage (firespace_panel)
-     - debajo, gráficas de las fuentes, experimentos y combustibles de la conversación.
+   FireSpace GX · AI Assistant (ApiGx)
+   Conversation logic:
+     - POST /api/preguntar with {pregunta, historial}
+     - memory of the last exchange in sessionStorage
+     - cited sources with a link to the original document
+   Also:
+     - the "panel" dashboard designed by the AI on the server (`panel` field
+       of /api/preguntar: {titulo, bloques}) is drawn at the top of the dashboard
+       and remembered in sessionStorage (firespace_panel)
+     - below it, charts of the sources, experiments and fuels of the conversation.
    ===================================================================== */
 (function () {
   "use strict";
 
-  // ---------- Memoria: solo el intercambio anterior ----------
-  // Se guarda en sessionStorage: dura mientras la pestaña esté abierta
-  // (aunque cambies a Inicio o Simulación) y se borra al cerrarla.
+  // ---------- Memory: only the previous exchange ----------
+  // Stored in sessionStorage: it lasts while the tab is open
+  // (even if you switch to Home or Simulation) and is cleared when the tab is closed.
   const CLAVE_MEMORIA = "firespace_ultimo_turno";
   const CLAVE_DASHBOARD = "firespace_dashboard";
   const CLAVE_PANEL = "firespace_panel";
@@ -40,17 +40,17 @@
       if (turno) sessionStorage.setItem(CLAVE_MEMORIA, JSON.stringify(turno));
       else sessionStorage.removeItem(CLAVE_MEMORIA);
     } catch (e) {
-      // Si el navegador no permite guardar, el seguimiento solo dura en esta página.
+      // If the browser does not allow saving, the follow-up only lasts on this page.
     }
   }
 
-  let ultimoTurno = cargarUltimoTurno(); // {pregunta, respuesta, fuentes} o null
-  let ultimoPanel = leerPanel();          // {titulo, bloques} o null
+  let ultimoTurno = cargarUltimoTurno(); // {pregunta, respuesta, fuentes} or null
+  let ultimoPanel = leerPanel();          // {titulo, bloques} or null
 
   function leerPanel() {
     try {
       const p = JSON.parse(sessionStorage.getItem(CLAVE_PANEL));
-      // Un panel guardado con el formato anterior (sin "bloques") se descarta.
+      // A dashboard saved with the old format (without "bloques") is discarded.
       return p && Array.isArray(p.bloques) ? p : null;
     } catch (e) {
       return null;
@@ -61,7 +61,7 @@
     try {
       if (panel) sessionStorage.setItem(CLAVE_PANEL, JSON.stringify(panel));
       else sessionStorage.removeItem(CLAVE_PANEL);
-    } catch (e) { /* sin memoria del navegador: solo dura en esta página */ }
+    } catch (e) { /* no browser memory: it only lasts on this page */ }
   }
 
   function historialParaServidor() {
@@ -72,22 +72,22 @@
     ];
   }
 
-  // ---------- Sugerencias por tipo de pregunta ----------
+  // ---------- Suggestions by question type ----------
   const SUGERENCIAS = {
     consultar: [
-      "¿Por qué las llamas son esféricas en microgravedad?",
-      "Háblame del comportamiento de las llamas de metanol",
-      "¿Qué es una llama fría?"
+      "Why are flames spherical in microgravity?",
+      "Tell me how methanol flames behave",
+      "What is a cool flame?"
     ],
     investigaciones: [
-      "¿Qué es el experimento Saffire?",
-      "¿Qué combustibles gaseosos se probaron en ACME?",
-      "¿Qué estudió el experimento FLEX?"
+      "What is the Saffire experiment?",
+      "Which gaseous fuels were tested in ACME?",
+      "What did the FLEX experiment study?"
     ],
     resultados: [
-      "¿Qué se observó con las gotas de heptano en FLEX?",
-      "¿Cómo se propaga el fuego sobre sólidos en microgravedad?",
-      "¿Cómo influye la concentración de oxígeno en un incendio en una nave?"
+      "What was observed with heptane droplets in FLEX?",
+      "How does fire spread over solids in microgravity?",
+      "How does oxygen concentration affect a fire in a spacecraft?"
     ]
   };
 
@@ -127,7 +127,7 @@
     if (!e.target.closest(".menu-modos")) document.querySelectorAll(".menu-modos").forEach((m) => (m.hidden = true));
   });
 
-  // ---------- Mostrar en pantalla ----------
+  // ---------- Display ----------
 
   function escapar(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -137,7 +137,7 @@
     return typeof url === "string" && url.startsWith("https://") ? url : null;
   }
 
-  // Número de cita -> fuente (el servidor agrupa citas del mismo documento: id "1, 3")
+  // Citation number -> source (the server groups citations of the same document: id "1, 3")
   function mapaDeCitas(fuentes) {
     const mapa = {};
     for (const f of fuentes) {
@@ -146,7 +146,7 @@
     return mapa;
   }
 
-  // Texto plano con guiones -> párrafos y listas; [n] -> enlace a la fuente
+  // Plain text with hyphens -> paragraphs and lists; [n] -> link to the source
   function formatearRespuesta(texto, fuentes) {
     const mapa = mapaDeCitas(fuentes);
     const enlazarCitas = (html) =>
@@ -183,7 +183,7 @@
     cont.className = "fuentes-msg";
     const titulo = document.createElement("p");
     titulo.className = "fuentes-msg__titulo";
-    titulo.textContent = "Fuentes:";
+    titulo.textContent = "Sources:";
     const lista = document.createElement("ul");
     for (const f of fuentes) {
       const li = document.createElement("li");
@@ -225,7 +225,7 @@
     const d = document.createElement("div");
     d.className = "msg msg--apigx";
     d.innerHTML = `<img class="mascota" src="${escapar(mascotaSrc)}" alt="">
-      <div class="msg__cuerpo"><div class="escribiendo" aria-label="Pensando"><span></span><span></span><span></span> Pensando…</div></div>`;
+      <div class="msg__cuerpo"><div class="escribiendo" aria-label="Thinking"><span></span><span></span><span></span> Thinking…</div></div>`;
     mensajes.appendChild(d);
     mensajes.scrollTop = mensajes.scrollHeight;
     return d.querySelector(".msg__cuerpo");
@@ -245,7 +245,7 @@
     cuerpo.appendChild(p);
   }
 
-  // ---------- Envío de preguntas ----------
+  // ---------- Sending questions ----------
 
   async function enviar(texto) {
     const pregunta = String(texto || "").trim();
@@ -268,7 +268,7 @@
       try {
         datos = await r.json();
       } catch (e) {
-        datos = { ok: false, error: "el servidor respondió algo inesperado (código " + r.status + ")." };
+        datos = { ok: false, error: "the server returned something unexpected (code " + r.status + ")." };
       }
 
       if (datos.ok) {
@@ -277,7 +277,7 @@
         ultimoTurno = { pregunta, respuesta: datos.respuesta, fuentes };
         guardarUltimoTurno(ultimoTurno);
 
-        // Solo las búsquedas de información traen panel; si no trae, se queda el anterior.
+        // Only information searches bring a dashboard; if none comes, the previous one stays.
         if (datos.panel) {
           ultimoPanel = datos.panel;
           guardarPanel(ultimoPanel);
@@ -285,11 +285,11 @@
         }
         registrarEnDashboard(pregunta, datos.respuesta, fuentes);
       } else {
-        // Los errores se muestran, pero no reemplazan a la pregunta anterior en la memoria.
+        // Errors are shown, but they do not replace the previous question in memory.
         mostrarError(cuerpo, datos.error);
       }
     } catch (e) {
-      mostrarError(cuerpo, "no se pudo conectar con el servidor.");
+      mostrarError(cuerpo, "could not connect to the server.");
     } finally {
       enviando = false;
       document.querySelectorAll("[data-form-consulta] .pill__enviar").forEach((b) => (b.disabled = false));
@@ -321,30 +321,30 @@
   );
   botonNueva.addEventListener("click", nuevaConversacion);
 
-  // ---------- Expandir / contraer el dashboard ----------
+  // ---------- Expand / collapse the dashboard ----------
   document.querySelectorAll("[data-toggle-dash]").forEach((b) =>
     b.addEventListener("click", () => {
       const abierto = raiz.classList.toggle("dash-abierto");
-      document.querySelector(".dash__toggle").setAttribute("aria-label", abierto ? "Volver a la conversación" : "Expandir dashboard");
+      document.querySelector(".dash__toggle").setAttribute("aria-label", abierto ? "Back to the conversation" : "Expand dashboard");
       setTimeout(redimensionarGraficas, 60);
     })
   );
 
   /* =====================================================================
-     DASHBOARD DE LA CONVERSACIÓN
+     CONVERSATION DASHBOARD
      ===================================================================== */
   const PALETA = ["#22d3ee", "#ff7a1a", "#a78bfa", "#3ddc97", "#ff4d5e", "#ffc93c", "#3b82f6", "#f472b6"];
   const EXPERIMENTOS = ["ACME", "FLEX", "SAFFIRE", "BASS", "SOFIE", "FLARE", "DAFT", "SPICE", "SAME", "CFI", "CIR", "MDCA"];
 
-  // Propiedades de referencia aproximadas (literatura abierta) para el índice ilustrativo.
+  // Approximate reference properties (open literature) for the illustrative index.
   const COMBUSTIBLES = {
-    metano:  { nombre: "Metano",    palabras: /\b(metano|methane)\b/i,           lfl: 5.0,  ufl: 15.0, flash: null, dhc: 50.0, color: "#22d3ee" },
-    etileno: { nombre: "Etileno",   palabras: /\b(etileno|ethylene)\b/i,         lfl: 2.7,  ufl: 36.0, flash: null, dhc: 47.2, color: "#ff7a1a" },
-    propano: { nombre: "Propano",   palabras: /\b(propano|propane)\b/i,          lfl: 2.1,  ufl: 9.5,  flash: null, dhc: 46.4, color: "#a78bfa" },
-    metanol: { nombre: "Metanol",   palabras: /\b(metanol|methanol)\b/i,         lfl: 6.0,  ufl: 36.0, flash: 11,   dhc: 19.9, color: "#3b82f6" },
-    etanol:  { nombre: "Etanol",    palabras: /\b(etanol|ethanol)\b/i,           lfl: 3.3,  ufl: 19.0, flash: 13,   dhc: 26.8, color: "#3ddc97" },
-    heptano: { nombre: "n-Heptano", palabras: /\b(n-)?(heptano|heptane)\b/i,     lfl: 1.05, ufl: 6.7,  flash: -4,   dhc: 44.6, color: "#ff4d5e" },
-    decano:  { nombre: "n-Decano",  palabras: /\b(n-)?(decano|decane)\b/i,       lfl: 0.8,  ufl: 5.4,  flash: 46,   dhc: 44.2, color: "#ffc93c" },
+    metano:  { nombre: "Methane",   palabras: /\b(metano|methane)\b/i,           lfl: 5.0,  ufl: 15.0, flash: null, dhc: 50.0, color: "#22d3ee" },
+    etileno: { nombre: "Ethylene",  palabras: /\b(etileno|ethylene)\b/i,         lfl: 2.7,  ufl: 36.0, flash: null, dhc: 47.2, color: "#ff7a1a" },
+    propano: { nombre: "Propane",   palabras: /\b(propano|propane)\b/i,          lfl: 2.1,  ufl: 9.5,  flash: null, dhc: 46.4, color: "#a78bfa" },
+    metanol: { nombre: "Methanol",  palabras: /\b(metanol|methanol)\b/i,         lfl: 6.0,  ufl: 36.0, flash: 11,   dhc: 19.9, color: "#3b82f6" },
+    etanol:  { nombre: "Ethanol",   palabras: /\b(etanol|ethanol)\b/i,           lfl: 3.3,  ufl: 19.0, flash: 13,   dhc: 26.8, color: "#3ddc97" },
+    heptano: { nombre: "n-Heptane", palabras: /\b(n-)?(heptano|heptane)\b/i,     lfl: 1.05, ufl: 6.7,  flash: -4,   dhc: 44.6, color: "#ff4d5e" },
+    decano:  { nombre: "n-Decane",  palabras: /\b(n-)?(decano|decane)\b/i,       lfl: 0.8,  ufl: 5.4,  flash: 46,   dhc: 44.2, color: "#ffc93c" },
   };
   const UMBRAL = 70;
 
@@ -372,16 +372,16 @@
   }
 
   function registrarEnDashboard(pregunta, respuesta, fuentes) {
-    // Citas por documento (cuántas veces aparece cada [n] en la respuesta)
+    // Citations per document (how many times each [n] appears in the answer)
     const veces = {};
     (respuesta.match(/\[(\d+)\]/g) || []).forEach((m) => (veces[m.slice(1, -1)] = (veces[m.slice(1, -1)] || 0) + 1));
     for (const f of fuentes) {
       const total = String(f.id).split(",").reduce((a, n) => a + (veces[n.trim()] || 1), 0);
       dash.citas[f.titulo] = (dash.citas[f.titulo] || 0) + total;
-      const via = String(f.fuente || "").split(",")[0].trim() || "Lista oficial del reto";
+      const via = String(f.fuente || "").split(",")[0].trim() || "Official challenge list";
       dash.origen[via] = (dash.origen[via] || 0) + total;
     }
-    // Experimentos y combustibles mencionados
+    // Experiments and fuels mentioned
     const texto = pregunta + "\n" + respuesta;
     for (const sigla of EXPERIMENTOS) {
       const re = new RegExp("\\b" + sigla + "\\b", sigla === "SAFFIRE" ? "gi" : "g");
@@ -426,20 +426,20 @@
     const hayDatos = hayConversacion || !!ultimoPanel;
     document.getElementById("dashVacio").hidden = !!hayDatos;
     document.querySelector(".dash__grid").hidden = !hayDatos;
-    // Las gráficas de la conversación sólo se muestran cuando tienen datos.
+    // The conversation charts are only shown when they have data.
     ["dFuentes", "dOrigen", "dExperimentos"].forEach((id) => {
       const fig = document.getElementById(id).closest(".grafica");
       (fig.parentElement.classList.contains("ancha") ? fig.parentElement : fig).hidden = !hayConversacion;
     });
     if (!hayConversacion) return;
 
-    // 1) Documentos citados
+    // 1) Cited documents
     const docs = Object.entries(dash.citas).sort((a, b) => b[1] - a[1]).slice(0, 8);
     graficar("fuentes", "dFuentes", {
       type: "bar",
       data: {
         labels: docs.map(([t]) => ((t.match(/\(([^)]+)\)\s*$/) || [])[1] || recortar(t, 26))),
-        datasets: [{ label: "Citas", data: docs.map(([, n]) => n), backgroundColor: docs.map((_, i) => PALETA[i % PALETA.length]), borderRadius: 4 }]
+        datasets: [{ label: "Citations", data: docs.map(([, n]) => n), backgroundColor: docs.map((_, i) => PALETA[i % PALETA.length]), borderRadius: 4 }]
       },
       options: {
         indexAxis: "y",
@@ -448,7 +448,7 @@
       }
     });
 
-    // 2) Origen de las fuentes
+    // 2) Origin of the sources
     const origen = Object.entries(dash.origen);
     graficar("origen", "dOrigen", {
       type: "doughnut",
@@ -459,13 +459,13 @@
       options: { cutout: "62%", plugins: { legend: { position: "bottom" } } }
     });
 
-    // 3) Experimentos mencionados
+    // 3) Experiments mentioned
     const exps = Object.entries(dash.experimentos).sort((a, b) => b[1] - a[1]);
     graficar("experimentos", "dExperimentos", {
       type: "bar",
       data: {
         labels: exps.map(([e]) => e),
-        datasets: [{ label: "Menciones", data: exps.map(([, n]) => n), backgroundColor: "#ff7a1a", borderRadius: 4 }]
+        datasets: [{ label: "Mentions", data: exps.map(([, n]) => n), backgroundColor: "#ff7a1a", borderRadius: 4 }]
       },
       options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
     });
@@ -475,12 +475,12 @@
 
 
   /* =====================================================================
-     PANEL DE LA IA (tablero sobre el tema que diseña el servidor)
-     Cada bloque se dibuja con textContent: lo que manda la IA nunca se
-     interpreta como HTML.
+     AI DASHBOARD (dashboard about the topic designed by the server)
+     Every block is drawn with textContent: what the AI sends is never
+     interpreted as HTML.
      ===================================================================== */
   const panelIA = document.getElementById("panelIA");
-  let graficasPanel = []; // gráficas activas del panel, para borrarlas al cambiar de panel
+  let graficasPanel = []; // active dashboard charts, to remove them when the dashboard changes
 
   function el(etiqueta, texto, clase) {
     const nodo = document.createElement(etiqueta);
@@ -490,7 +490,7 @@
   }
 
   function formatear(valor) {
-    return Number.isInteger(valor) ? String(valor) : valor.toLocaleString("es-MX", { maximumFractionDigits: 3 });
+    return Number.isInteger(valor) ? String(valor) : valor.toLocaleString("en-US", { maximumFractionDigits: 3 });
   }
 
   const DIBUJAR = {
@@ -591,7 +591,7 @@
 
     grafica(b, caja) {
       if (typeof Chart === "undefined") {
-        // Respaldo sin Chart.js: barras simples con la primera serie
+        // Fallback without Chart.js: simple bars with the first series
         const serie = b.series[0];
         const maximo = Math.max(...serie.valores.map(Math.abs)) || 1;
         b.etiquetas.forEach((etiqueta, k) => {
@@ -654,7 +654,7 @@
     panelIA.appendChild(el("h3", datos.titulo, "panel-ia__titulo"));
 
     if (!datos.bloques || !datos.bloques.length) {
-      panelIA.appendChild(el("p", "No se pudo generar el tablero para esta consulta. Intenta preguntar de otra forma.", "aviso-demo"));
+      panelIA.appendChild(el("p", "The dashboard could not be generated for this query. Try asking in a different way.", "aviso-demo"));
       return;
     }
     const rejilla = el("div", null, "panel-ia__bloques");
@@ -665,19 +665,19 @@
       const caja = el("div", null, "grafica pia-bloque pia-bloque--" + bloque.tipo);
       if (bloque.titulo) caja.appendChild(el("div", bloque.titulo, "grafica__titulo"));
       try {
-        rejilla.appendChild(caja); // primero en el DOM: Chart.js necesita el tamaño real
+        rejilla.appendChild(caja); // in the DOM first: Chart.js needs the real size
         dibujar(bloque, caja);
         if (Array.isArray(bloque.citas) && bloque.citas.length) {
-          caja.appendChild(el("p", "Fuentes: " + bloque.citas.map((n) => "[" + n + "]").join(" "), "pia-citas"));
+          caja.appendChild(el("p", "Sources: " + bloque.citas.map((n) => "[" + n + "]").join(" "), "pia-citas"));
         }
       } catch (e) {
-        caja.remove(); // si un bloque viene mal formado, se omite sin romper el resto del panel
+        caja.remove(); // if a block is malformed, it is skipped without breaking the rest of the dashboard
       }
     }
-    panelIA.appendChild(el("p", "Tablero generado por IA a partir de las fuentes de la respuesta.", "aviso-demo"));
+    panelIA.appendChild(el("p", "Dashboard generated by AI from the sources of the answer.", "aviso-demo"));
   }
 
-  /* ---------- índice ilustrativo para combustibles ---------- */
+  /* ---------- illustrative index for fuels ---------- */
   function peligrosidad(c) {
     const cl = (v) => Math.max(0, Math.min(1, v));
     const vol = c.flash == null ? 1 : cl((60 - c.flash) / 80);
@@ -699,7 +699,7 @@
       ctx.strokeStyle = "#ff4d5e"; ctx.setLineDash([5, 4]);
       ctx.beginPath(); ctx.moveTo(a.left, y); ctx.lineTo(a.right, y); ctx.stroke();
       ctx.setLineDash([]); ctx.fillStyle = "#ff8a95"; ctx.font = "600 10px Inter, sans-serif";
-      ctx.fillText("Peligro", a.left + 6, y - 5);
+      ctx.fillText("Danger", a.left + 6, y - 5);
       if (opts.x != null && chart.scales.x) {
         const x = chart.scales.x.getPixelForValue(opts.x);
         ctx.strokeStyle = "#fff"; ctx.setLineDash([3, 3]);
@@ -749,23 +749,23 @@
       plugins: [pluginUmbral]
     });
 
-    // Estado textual
+    // Text status
     let peor = null;
     ids.forEach((id) => {
       const v = riesgo(COMBUSTIBLES[id], ajustes.cantidad, ajustes.oxigeno);
       if (!peor || v > peor.v) peor = { id, v };
     });
     const est = document.getElementById("estadoRiesgo");
-    if (!peor) { est.className = "estado-riesgo"; est.textContent = "Selecciona al menos un combustible."; }
+    if (!peor) { est.className = "estado-riesgo"; est.textContent = "Select at least one fuel."; }
     else {
       const nombre = COMBUSTIBLES[peor.id].nombre;
       const cruce = xs.find((x) => riesgo(COMBUSTIBLES[peor.id], x / 100, ajustes.oxigeno) >= UMBRAL);
       est.className = "estado-riesgo " + (peor.v >= UMBRAL ? "peligro" : peor.v >= 40 ? "precaucion" : "");
       est.textContent = peor.v >= UMBRAL
-        ? `⚠ ${nombre}: índice ${peor.v}/100 con ${Math.round(ajustes.cantidad * 100)}% de cantidad y ${ajustes.oxigeno}% O₂.`
+        ? `⚠ ${nombre}: index ${peor.v}/100 with ${Math.round(ajustes.cantidad * 100)}% amount and ${ajustes.oxigeno}% O₂.`
         : cruce != null
-          ? `${nombre} (índice ${peor.v}) cruzaría el umbral desde ${cruce}% de cantidad.`
-          : `Ningún combustible alcanza el umbral con ${ajustes.oxigeno}% O₂.`;
+          ? `${nombre} (index ${peor.v}) would cross the threshold from ${cruce}% amount.`
+          : `No fuel reaches the threshold with ${ajustes.oxigeno}% O₂.`;
     }
 
     document.getElementById("dRangos").innerHTML = ids.map((id) => {
@@ -787,11 +787,11 @@
   rC.addEventListener("input", () => { ajustes.cantidad = rC.value / 100; document.getElementById("oCantidad").textContent = rC.value + "%"; pintarCombustibles(); });
   rO.addEventListener("input", () => { ajustes.oxigeno = +rO.value; document.getElementById("oOxigeno").textContent = rO.value + "%"; pintarCombustibles(); });
 
-  // ---------- Arranque ----------
+  // ---------- Start ----------
   if (typeof Chart !== "undefined") configurarChart();
   fijarModo("consultar");
 
-  // Al volver a esta página, se muestra la última respuesta de esta pestaña.
+  // When coming back to this page, the last answer of this tab is shown.
   if (ultimoTurno) {
     entrarAlChat(ultimoTurno.pregunta);
     agregarPregunta(ultimoTurno.pregunta);

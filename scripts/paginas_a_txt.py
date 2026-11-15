@@ -1,13 +1,13 @@
 """
-paginas_a_txt.py - Descarga las páginas web de las fuentes del reto y guarda
-solo los párrafos del artículo (sin menús ni pies de página) en data/fuentes/.
+paginas_a_txt.py - Downloads the web pages of the challenge sources and saves
+only the paragraphs of the article (no menus or footers) in data/fuentes/.
 
-Si un archivo ya existe, NO se sobrescribe (por si lo corregiste a mano).
-Para regenerarlo, bórralo y vuelve a ejecutar el script.
+If a file already exists, it is NOT overwritten (in case you fixed it by hand).
+To regenerate it, delete it and run the script again.
 
-Uso (desde la carpeta raíz del proyecto, con el entorno virtual activo):
+Usage (from the project root folder, with the virtual environment active):
     python scripts/paginas_a_txt.py
-Después:
+Then:
     python scripts/ingestar_fuentes.py
 """
 
@@ -19,11 +19,11 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 CARPETA_FUENTES = RAIZ / "data" / "fuentes"
 
-CABECERAS = {"User-Agent": "Mozilla/5.0 (FireSpace, prototipo estudiantil NASA Space Apps Challenge)"}
+CABECERAS = {"User-Agent": "Mozilla/5.0 (FireSpace, student prototype NASA Space Apps Challenge)"}
 
 CS = "https://www.nasa.gov/glenn/glenn-expertise-space-exploration/physical-sciences-program/"
 
-# via = None significa que la página está directamente en la lista oficial del reto.
+# via = None means the page is directly on the official challenge list.
 PAGINAS = [
     {"id": "web_combustion_science", "titulo": "NASA Combustion Science", "via": None,
      "url": CS + "combustion-science/"},
@@ -51,9 +51,9 @@ PAGINAS = [
      "url": "https://spinoff.nasa.gov/node/9918"},
 ]
 
-MIN_PARRAFO = 60          # párrafos más cortos suelen ser botones, fechas o menús
-MIN_ELEMENTO_LISTA = 80   # los elementos de menú son cortos; las viñetas del artículo, largas
-MIN_TEXTO_PAGINA = 200    # si se extrae menos, la página probablemente necesita copia manual
+MIN_PARRAFO = 60          # shorter paragraphs are usually buttons, dates or menus
+MIN_ELEMENTO_LISTA = 80   # menu items are short; article bullets are long
+MIN_TEXTO_PAGINA = 200    # if less is extracted, the page probably needs a manual copy
 
 FRASES_DE_RELLENO = [
     "NASA explores the unknown",
@@ -66,8 +66,8 @@ TITULOS_DE_CORTE = {"keep exploring", "discover more topics from nasa"}
 
 
 class ExtractorParrafos(HTMLParser):
-    """Recorre el HTML y junta el texto de párrafos, viñetas y celdas,
-    ignorando scripts, menús, encabezados y pies de página."""
+    """Walks the HTML and gathers the text of paragraphs, bullets and cells,
+    ignoring scripts, menus, headers and footers."""
 
     IGNORAR = {"script", "style", "nav", "header", "footer", "aside", "form", "noscript", "svg"}
     BLOQUES = {"p", "li", "td"}
@@ -86,7 +86,7 @@ class ExtractorParrafos(HTMLParser):
             texto = " ".join("".join(self.actual).split())
             if self.etiqueta in self.TITULOS:
                 if texto.lower() in TITULOS_DE_CORTE:
-                    self.detenido = True  # a partir de aquí solo hay enlaces a otras noticias
+                    self.detenido = True  # from here on there are only links to other news
             elif not self.detenido:
                 self.bloques.append((self.etiqueta, texto))
         self.actual = None
@@ -97,7 +97,7 @@ class ExtractorParrafos(HTMLParser):
             self.ignorando += 1
         elif not self.ignorando and (tag in self.BLOQUES or tag in self.TITULOS):
             if self.actual is not None and tag == self.etiqueta:
-                self._cerrar_bloque()  # un <p> nuevo sin haber cerrado el anterior
+                self._cerrar_bloque()  # a new <p> without closing the previous one
             if self.actual is None:
                 self.etiqueta = tag
                 self.actual = []
@@ -145,18 +145,18 @@ def main():
     for pagina in PAGINAS:
         destino = CARPETA_FUENTES / f"{pagina['id']}.txt"
         if destino.exists():
-            print(f"  {destino.name}: ya existe, se deja igual (bórralo para regenerarlo)")
+            print(f"  {destino.name}: already exists, left as is (delete it to regenerate it)")
             continue
 
         try:
             texto = extraer_texto(descargar(pagina["url"]))
         except (urllib.error.URLError, TimeoutError) as e:
-            print(f"  {destino.name}: NO SE PUDO DESCARGAR ({e})")
+            print(f"  {destino.name}: COULD NOT DOWNLOAD ({e})")
             revisar.append(pagina)
             continue
 
         if len(texto) < MIN_TEXTO_PAGINA:
-            print(f"  {destino.name}: solo se extrajeron {len(texto)} caracteres, NO se guardó")
+            print(f"  {destino.name}: only {len(texto)} characters were extracted, NOT saved")
             revisar.append(pagina)
             continue
 
@@ -164,15 +164,15 @@ def main():
         if pagina["via"]:
             cabecera.append(f"VIA: {pagina['via']}")
         destino.write_text("\n".join(cabecera + ["---", texto]), encoding="utf-8")
-        print(f"  {destino.name}: {len(texto)} caracteres")
+        print(f"  {destino.name}: {len(texto)} characters")
 
     print("-" * 60)
     if revisar:
-        print("Estas páginas hay que copiarlas a mano (abre el enlace y pega el texto del artículo):")
+        print("These pages must be copied by hand (open the link and paste the article text):")
         for pagina in revisar:
             print(f"  - {pagina['id']}.txt  <-  {pagina['url']}")
-    print("Revisa los .txt creados: si alguno tiene texto que no es del artículo, bórralo de ese archivo.")
-    print("Después ejecuta: python scripts/ingestar_fuentes.py")
+    print("Check the .txt files created: if any has text that is not from the article, delete it from that file.")
+    print("Then run: python scripts/ingestar_fuentes.py")
 
 
 if __name__ == "__main__":

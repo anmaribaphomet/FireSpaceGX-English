@@ -1,102 +1,101 @@
-/* FireSpace — Simulación 3D de una llama con Plotly
+/* FireSpace — 3D simulation of a flame with Plotly
  *
- * Modelo ilustrativo (no es un cálculo físico riguroso):
- *  - Gravedad:  en 1 g la llama es alargada, en forma de gota.
- *               en 0 g (microgravedad) tiende a ser esférica, como
- *               se observa en los experimentos de combustión en la ISS.
- *  - Oxígeno:   más O2 -> llama más grande y más caliente.
- *               Menos O2 -> más pequeña y menos caliente.
- *  - Tamaño:    escala general de la llama (1 a 10).
+ * Illustrative model (not a rigorous physical calculation):
+ *  - Gravity:  at 1 g the flame is elongated, teardrop-shaped.
+ *              at 0 g (microgravity) it tends to be spherical, as
+ *              observed in the combustion experiments on the ISS.
+ *  - Oxygen:   more O2 -> bigger and hotter flame.
+ *              Less O2 -> smaller and cooler.
+ *  - Size:     overall scale of the flame (1 to 10).
  *
- * ESCALA — 1 unidad = 1 cm (aprox.)
- *   La escala es relativa porque el proyecto no define un quemador
- *   real. Se ancla así: quemador de 0,6 cm de diámetro por defecto
- *   (configurable en la página); con tamaño 5, 1 g y 21 % de O2 la
- *   llama mide ~8 cm de alto y ~3 cm de ancho, como una llama
- *   pequeña de laboratorio.
- *   Si el usuario pone el diámetro real de su quemador, todas las
- *   medidas en cm se recalculan en la misma proporción
- *   (factor = diámetro / 0,6): un quemador del doble de diámetro
- *   da una llama del doble de alto y de ancho. La forma y la
- *   temperatura estimada no cambian con el diámetro en este modelo
- *   ilustrativo: dependen de la gravedad y del oxígeno.
+ * SCALE — 1 unit = 1 cm (approx.)
+ *   The scale is relative because the project does not define a real
+ *   burner. It is anchored like this: 0.6 cm burner diameter by default
+ *   (configurable on the page); with size 5, 1 g and 21 % O2 the
+ *   flame is ~8 cm tall and ~3 cm wide, like a small lab flame.
+ *   If the user enters the real diameter of their burner, every
+ *   measurement in cm is recalculated in the same proportion
+ *   (factor = diameter / 0.6): a burner twice as wide gives a flame
+ *   twice as tall and wide. The shape and the estimated temperature
+ *   do not change with the diameter in this illustrative model:
+ *   they depend on gravity and oxygen.
  *
- * COLOR Y TEMPERATURA — sí, en experimentos reales la llama
- * cambia de color con la temperatura, pero no solo por radiación
- * de cuerpo negro:
- *   - Amarillo/naranja: incandescencia del hollín. El hollín
- *     caliente brilla como una brasa (~1000-1400 °C). Es la
- *     llama típica, luminosa y con humo, de combustión incompleta.
- *   - Azul: quimiluminiscencia de radicales CH* y C2* (~430 y
- *     516 nm). Domina cuando el combustible forma poco hollín
- *     (por ejemplo, el metanol de FLEX: "very dim blue flame").
- *   Por eso aquí el color NO sale de una lista de estados: el del hollín
- *   se calcula con la ley de Planck (cuerpo negro) y las funciones de
- *   color CIE 1931 para la temperatura de cada punto, y el azul es el de
- *   la emisión de CH* (431 nm), pesado por lo poco o mucho hollín que
- *   forma el combustible (ver "Color físico de la llama" más abajo).
+ * COLOR AND TEMPERATURE — yes, in real experiments the flame
+ * changes color with temperature, but not only because of
+ * black-body radiation:
+ *   - Yellow/orange: incandescence of soot. Hot soot glows like an
+ *     ember (~1000-1400 °C). It is the typical luminous, smoky flame
+ *     of incomplete combustion.
+ *   - Blue: chemiluminescence of the CH* and C2* radicals (~430 and
+ *     516 nm). It dominates when the fuel forms little soot
+ *     (for example, the methanol in FLEX: "very dim blue flame").
+ *   That is why the color here does NOT come from a list of states: the soot
+ *   color is calculated with Planck's law (black body) and the CIE 1931
+ *   color matching functions for the temperature of each point, and the blue
+ *   is the CH* (431 nm) + C2* emission, weighted by how little or how much soot
+ *   the fuel forms (see "Physical color of the flame" below).
  *
- * La llama se dibuja con 3 capas Mesh3d anidadas (exterior, media
- * e interior) + una nube de puntos Scatter3d que representa el
- * volumen caliente. La llama nace POR ENCIMA del quemador, unida
- * a él solo por una mecha fina, para que el cilindro no la tape.
+ * The flame is drawn with 3 nested Mesh3d layers (outer, middle
+ * and inner) + a Scatter3d point cloud that represents the hot
+ * volume. The flame starts ABOVE the burner, joined to it only by
+ * a thin wick, so the cylinder does not hide it.
  */
 
 (function () {
   "use strict";
 
   var GRAFICA_ID = "grafica-llama";
-  var BASE_Z = 0.4; // la base de la llama queda 0,4 cm sobre el quemador
-  var TEMP_MIN = 600; // °C, borde frío de la llama (para la escala de color)
-  var TEMP_MAX = 1600; // °C, tope de la escala de color
-  var QUEMADOR_REF_CM = 0.6;
-  var HOLLIN_GENERICO = 0.6; // hidrocarburo genérico (sin compuesto elegido): llama con hollín // diámetro de referencia de la escala (cm)
+  var BASE_Z = 0.4; // the base of the flame sits 0.4 cm above the burner
+  var TEMP_MIN = 600; // °C, cold edge of the flame
+  var TEMP_MAX = 1600; // °C, upper limit of the local temperature
+  var QUEMADOR_REF_CM = 0.6; // reference burner diameter of the scale (cm)
+  var HOLLIN_GENERICO = 0.6; // generic hydrocarbon (no compound chosen): sooty flame
   var QUEMADOR_MIN_CM = 0.2;
   var QUEMADOR_MAX_CM = 2.0;
 
-  // ---------- Parámetros físicos (ilustrativos) ----------
+  // ---------- Physical parameters (illustrative) ----------
 
   function calcularParametros(gravedad, oxigeno, tamano, diametroQuemador, mezcla) {
-    // Diámetro del quemador (cm): lo pone el usuario; si falta o
-    // es inválido, se usa la referencia de 0,6 cm.
+    // Burner diameter (cm): set by the user; if it is missing or
+    // invalid, the 0.6 cm reference is used.
     var diametro = parseFloat(diametroQuemador);
     if (!isFinite(diametro) || diametro <= 0) diametro = QUEMADOR_REF_CM;
     diametro = clamp(diametro, QUEMADOR_MIN_CM, QUEMADOR_MAX_CM);
 
-    // Factor de escala: todas las medidas en cm son proporcionales
-    // al diámetro del quemador respecto a la referencia de 0,6 cm.
+    // Scale factor: every measurement in cm is proportional
+    // to the burner diameter relative to the 0.6 cm reference.
     var factorEscala = diametro / QUEMADOR_REF_CM;
 
-    // Factor por oxígeno: 15% -> 0.75, 21% -> 0.90, 35% -> 1.25
+    // Oxygen factor: 15% -> 0.75, 21% -> 0.90, 35% -> 1.25
     var fO2 = 0.75 + ((oxigeno - 15) / 20) * 0.5;
 
-    // Ancho (diámetro máximo) y altura en cm (1 unidad = 1 cm).
-    // Tamaño 5, g=1, quemador 0,6 cm: alto ~8 cm, ancho ~3,2 cm (gota)
-    // Tamaño 5, g=0, quemador 0,6 cm: alto ~4 cm, ancho ~4 cm (esfera)
-    // Con otro quemador, alto y ancho se multiplican por factorEscala.
+    // Width (maximum diameter) and height in cm (1 unit = 1 cm).
+    // Size 5, g=1, 0.6 cm burner: ~8 cm tall, ~3.2 cm wide (teardrop)
+    // Size 5, g=0, 0.6 cm burner: ~4 cm tall, ~4 cm wide (sphere)
+    // With another burner, height and width are multiplied by factorEscala.
     var ancho = tamano * (0.9 - 0.18 * gravedad) * fO2 * factorEscala;
     var altura = tamano * (0.9 + 0.9 * gravedad) * fO2 * factorEscala;
 
-    // Temperatura máxima estimada (°C, ilustrativa).
-    // Rango del modelo: 950 °C (15 % O2, 0 g) a 1540 °C (35 % O2, 1 g).
+    // Estimated maximum temperature (°C, illustrative).
+    // Model range: 950 °C (15 % O2, 0 g) to 1540 °C (35 % O2, 1 g).
     var temperatura = Math.round(
       950 + (oxigeno - 15) * 22 + gravedad * 150
     );
 
     var forma;
     if (gravedad < 0.15) {
-      forma = "Esférica — típica de microgravedad";
+      forma = "Spherical — typical of microgravity";
     } else if (gravedad < 0.6) {
-      forma = "Redondeada / intermedia";
+      forma = "Rounded / intermediate";
     } else {
-      forma = "Alargada en forma de gota — gravedad terrestre";
+      forma = "Elongated teardrop — Earth gravity";
     }
 
-    // Combustible: si el usuario eligió compuestos de PSI-68 (FLEX-2) se usa su
-    // tendencia relativa a formar hollín; si no, un hidrocarburo genérico.
-    mezcla = mezcla || { hollin: HOLLIN_GENERICO, nombre: "Hidrocarburo genérico" };
+    // Fuel: if the user chose PSI-68 (FLEX-2) compounds, their relative
+    // tendency to form soot is used; otherwise, a generic hydrocarbon.
+    mezcla = mezcla || { hollin: HOLLIN_GENERICO, nombre: "Generic hydrocarbon" };
 
-    // Color: se CALCULA (ley de Planck + CIE 1931), no se elige de una lista de estados.
+    // Color: it is CALCULATED (Planck's law + CIE 1931), not picked from a list of states.
     var color = describirColor(temperatura, mezcla.hollin);
 
     return {
@@ -105,7 +104,7 @@
       tamano: tamano,
       diametroQuemador: diametro,
       factorEscala: factorEscala,
-      radioQuemador: diametro / 2, // cm; el cilindro del quemador ya no depende del tamaño de la llama
+      radioQuemador: diametro / 2, // cm; the burner cylinder does not depend on the flame size
       ancho: ancho, // cm
       altura: altura, // cm
       radioMax: ancho / 2,
@@ -116,20 +115,20 @@
       hollin: mezcla.hollin,
       combustible: mezcla.nombre,
       baseZ: BASE_Z,
-      // Exponente del perfil: desplaza el máximo grosor hacia
-      // la base en gravedad terrestre y hacia el centro en 0 g.
+      // Profile exponent: moves the maximum thickness toward
+      // the base in Earth gravity and toward the center at 0 g.
       perfilExp: 0.75 + 0.45 * (1 - gravedad),
     };
   }
 
-  // ---------- Utilidades ----------
+  // ---------- Utilities ----------
 
   function clamp(v, min, max) {
     return Math.min(max, Math.max(min, v));
   }
 
-  // Generador pseudoaleatorio con semilla fija: la nube de puntos
-  // no "salta" cada vez que se mueve un slider.
+  // Pseudo-random generator with a fixed seed: the point cloud
+  // does not "jump" every time a slider moves.
   function mulberry32(semilla) {
     return function () {
       semilla |= 0;
@@ -140,7 +139,7 @@
     };
   }
 
-  // Radio de la llama a una altura normalizada u (0 = base, 1 = punta)
+  // Flame radius at a normalized height u (0 = base, 1 = tip)
   function radioPerfil(u, p) {
     if (u <= 0 || u >= 1) return 0;
     var s = Math.sin(Math.PI * Math.pow(u, p.parametros.perfilExp));
@@ -148,34 +147,34 @@
     return p.parametros.radioMax * Math.pow(s, 0.65);
   }
 
-  // ---------- Color físico de la llama ----------
+  // ---------- Physical color of the flame ----------
   //
-  // Lo que se ve en una llama tiene dos orígenes (ver exp_flex.txt: el metanol
+  // What you see in a flame has two origins (see exp_flex.txt: methanol
   // "burns with a very dim blue flame (not much soot production)"):
-  //  1. Hollín incandescente: emite como un cuerpo negro. Su color se calcula
-  //     con la ley de Planck integrada con las funciones de igualación de color
-  //     CIE 1931 (ajuste analítico de Wyman, Sloan y Shirley, 2013) y se pasa a
-  //     sRGB. No hay una tabla de colores inventada: cada temperatura da su color.
-  //  2. Quimiluminiscencia de CH* (~431 nm) y C2* (~516 nm): el azul de la zona
-  //     de reacción, visible cuando hay poco hollín. Su color sale de esas longitudes de onda.
-  // El brillo de un cuerpo negro crece muchísimo con T; para poder mostrarlo se
-  // usa "exposición automática" (como una cámara) respecto a la zona más caliente
-  // y una compresión de brillo. Eso cambia el brillo en pantalla, no el tono.
-  var C2 = 1.4388e-2; // segunda constante de radiación (m·K)
-  var PUNTO_DRAPER_C = 525; // °C: por debajo, un sólido caliente casi no emite luz visible
+  //  1. Incandescent soot: it emits like a black body. Its color is calculated
+  //     with Planck's law integrated with the CIE 1931 color matching functions
+  //     (analytic fit by Wyman, Sloan and Shirley, 2013) and converted to
+  //     sRGB. There is no made-up color table: each temperature gives its own color.
+  //  2. Chemiluminescence of CH* (~431 nm) and C2* (~516 nm): the blue of the
+  //     reaction zone, visible when there is little soot. Its color comes from those wavelengths.
+  // The brightness of a black body grows enormously with T; to be able to show it,
+  // an "auto exposure" (like a camera) relative to the hottest zone and a
+  // brightness compression are used. That changes the on-screen brightness, not the hue.
+  var C2 = 1.4388e-2; // second radiation constant (m·K)
+  var PUNTO_DRAPER_C = 525; // °C: below it, a hot solid emits almost no visible light (Draper point)
 
   function lobulo(l, mu, s1, s2) {
     var t = (l - mu) / (l < mu ? s1 : s2);
     return Math.exp(-0.5 * t * t);
   }
-  function cmf(l) { // CIE 1931 2°, ajuste de Wyman et al. (2013)
+  function cmf(l) { // CIE 1931 2°, fit by Wyman et al. (2013)
     return [
       1.056 * lobulo(l, 599.8, 37.9, 31.0) + 0.362 * lobulo(l, 442.0, 16.0, 26.7) - 0.065 * lobulo(l, 501.1, 20.4, 26.2),
       0.821 * lobulo(l, 568.8, 46.9, 40.5) + 0.286 * lobulo(l, 530.9, 16.3, 31.1),
       1.217 * lobulo(l, 437.0, 11.8, 36.0) + 0.681 * lobulo(l, 459.0, 26.0, 13.8),
     ];
   }
-  function xyzALineal(X, Y, Z) { // XYZ -> sRGB lineal (D65)
+  function xyzALineal(X, Y, Z) { // XYZ -> linear sRGB (D65)
     return [
       Math.max(0, 3.2406 * X - 1.5372 * Y - 0.4986 * Z),
       Math.max(0, -0.9689 * X + 1.8758 * Y + 0.0415 * Z),
@@ -187,7 +186,7 @@
     return v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055;
   }
 
-  // Cuerpo negro a T (°C): color lineal con luminancia Y = 1 y luminancia relativa.
+  // Black body at T (°C): linear hue and relative luminance.
   var cacheCuerpoNegro = {};
   function cuerpoNegro(tC) {
     var clave = Math.round(tC / 5) * 5;
@@ -195,39 +194,39 @@
     var T = clave + 273.15, X = 0, Y = 0, Z = 0;
     for (var l = 380; l <= 780; l += 5) {
       var lm = l * 1e-9;
-      var B = 1 / (Math.pow(lm, 5) * (Math.exp(C2 / (lm * T)) - 1)); // Planck (sin constantes)
+      var B = 1 / (Math.pow(lm, 5) * (Math.exp(C2 / (lm * T)) - 1)); // Planck (without constants)
       var c = cmf(l);
       X += B * c[0]; Y += B * c[1]; Z += B * c[2];
     }
     return (cacheCuerpoNegro[clave] = { rgb: cromaticidad(xyzALineal(X, Y, Z)), Y: Y });
   }
 
-  // Normaliza un color lineal para que su canal mayor valga 1 (solo el tono).
+  // Normalizes a linear color so its largest channel is 1 (hue only).
   function cromaticidad(rgb) {
     var m = Math.max(rgb[0], rgb[1], rgb[2]) || 1;
     return [rgb[0] / m, rgb[1] / m, rgb[2] / m];
   }
 
-  // Tono de la zona de reacción: emisión de CH* (431 nm) + C2* (banda de Swan,
-  // 516 nm). La proporción real varía con el combustible; aquí C2* pesa la mitad
-  // que CH* (aproximación), lo que da el azul típico de una llama sin hollín.
+  // Hue of the reaction zone: emission of CH* (431 nm) + C2* (Swan band,
+  // 516 nm). The real ratio varies with the fuel; here C2* weighs half as much
+  // as CH* (approximation), which gives the typical blue of a soot-free flame.
   var AZUL_CH = (function () {
     var ch = cmf(431), c2 = cmf(516);
     return cromaticidad(xyzALineal(ch[0] + 0.5 * c2[0], ch[1] + 0.5 * c2[1], ch[2] + 0.5 * c2[2]));
   })();
 
-  // Color en pantalla de un punto de la llama.
-  //  tC: temperatura local; hollinLocal: 0 (sin hollín) a 1; tRef: temperatura de la zona más caliente.
+  // On-screen color of a point of the flame.
+  //  tC: local temperature; hollinLocal: 0 (no soot) to 1; tRef: temperature of the hottest zone.
   function colorLlama(tC, hollinLocal, tRef) {
     var rgb = [0, 0, 0];
-    // Opacidad del hollín: con un poco de hollín su brillo ya domina sobre el de CH*/C2*.
+    // Soot opacity: with a little soot, its brightness already dominates over CH*/C2*.
     var hollinVisible = 1 - Math.exp(-4 * hollinLocal);
     if (tC > PUNTO_DRAPER_C) {
       var cn = cuerpoNegro(tC);
-      var brillo = Math.pow(cn.Y / cuerpoNegro(tRef).Y, 0.22); // exposición automática + compresión
+      var brillo = Math.pow(cn.Y / cuerpoNegro(tRef).Y, 0.22); // auto exposure + compression
       for (var k = 0; k < 3; k++) rgb[k] += hollinVisible * cn.rgb[k] * brillo * 2.2;
     }
-    // CH*/C2*: tenue, solo se ve donde no hay hollín (por eso las llamas con hollín se ven amarillas)
+    // CH*/C2*: faint, only visible where there is no soot (that is why sooty flames look yellow)
     var azul = (1 - hollinVisible) * 0.9 * clamp((tC - PUNTO_DRAPER_C) / 500, 0, 1);
     for (var j = 0; j < 3; j++) rgb[j] += AZUL_CH[j] * azul;
     var r = Math.round(255 * gammaSRGB(1 - Math.exp(-rgb[0])));
@@ -236,31 +235,31 @@
     return "rgb(" + r + "," + g + "," + b + ")";
   }
 
-  // Hollín a lo largo de la llama: la base (zona de reacción) casi sin hollín y
-  // azul; el hollín aparece aguas arriba en la llama. hollin = valor del combustible.
+  // Soot along the flame: the base (reaction zone) has almost no soot and is
+  // blue; soot appears further up the flame. hollin = value of the fuel.
   function hollinLocal(p, u, frac) {
     var h = p.parametros.hollin * clamp((u - 0.08) / 0.35, 0, 1);
     return clamp(h * (0.7 + 0.3 * (1 - frac)), 0, 1);
   }
 
-  // Nombre del color dominante, leído del color calculado en la zona más caliente.
+  // Name of the dominant color, read from the calculated color of the hottest zone.
   function describirColor(tMax, hollin) {
     var cn = cuerpoNegro(tMax);
-    var rel = cn.rgb[1] / cn.rgb[0]; // verde/rojo del tono de cuerpo negro: más alto = más amarillo
-    var tono = rel < 0.12 ? "rojo" : rel < 0.22 ? "naranja rojizo" : rel < 0.32 ? "naranja" : "amarillo anaranjado";
+    var rel = cn.rgb[1] / cn.rgb[0]; // green/red of the black-body hue: higher = more yellow
+    var tono = rel < 0.12 ? "red" : rel < 0.22 ? "reddish orange" : rel < 0.32 ? "orange" : "orange-yellow";
     if (hollin < 0.2) {
       return {
-        nombre: "Azul tenue",
-        explicacion: "Casi sin hollín: domina la emisión azul de CH* de la zona de reacción, como la llama de metanol descrita en FLEX. El hollín que hay brillaría " + tono + " a " + tMax + " °C.",
+        nombre: "Faint blue",
+        explicacion: "Almost no soot: the blue CH* emission of the reaction zone dominates, like the methanol flame described in FLEX. The little soot there is would glow " + tono + " at " + tMax + " °C.",
       };
     }
     return {
-      nombre: (hollin < 0.5 ? "Base azul y cuerpo " : "") + tono + (hollin >= 0.5 ? " luminoso con base azul" : ""),
-      explicacion: "Color de cuerpo negro del hollín a " + tMax + " °C (ley de Planck, CIE 1931). La base se ve azul por la emisión de CH* donde aún no hay hollín.",
+      nombre: (hollin < 0.5 ? "Blue base and " + tono + " body" : "Luminous " + tono + " with a blue base"),
+      explicacion: "Black-body color of the soot at " + tMax + " °C (Planck's law, CIE 1931). The base looks blue because of the CH* emission where there is no soot yet.",
     };
   }
 
-  // Escala de la barra lateral: los mismos colores del hollín, en el rango de la llama actual.
+  // Side bar scale: the same soot colors, over the range of the current flame.
   function escalaTemperatura(tMin, tMax, tRef) {
     var pasos = 12, escala = [];
     for (var i = 0; i <= pasos; i++) {
@@ -270,8 +269,8 @@
     return escala;
   }
 
-  // Temperatura local en °C en un punto de la llama:
-  // máxima en el centro y en la base, menor en el borde y la punta.
+  // Local temperature in °C at a point of the flame:
+  // highest in the center and at the base, lower at the edge and the tip.
   function tempLocal(p, u, frac, factorCapa) {
     var t =
       TEMP_MIN +
@@ -282,9 +281,9 @@
     return clamp(t, TEMP_MIN, TEMP_MAX);
   }
 
-  // ---------- Geometría ----------
+  // ---------- Geometry ----------
 
-  // Cilindro genérico (quemador y mecha) entre z0 y z1.
+  // Generic cylinder (burner and wick) between z0 and z1.
   function crearCilindro(r, z0, z1, color, opacidad, nombre) {
     var NT = 24;
     var x = [];
@@ -332,13 +331,12 @@
     };
   }
 
-  // Una capa (superficie) de la llama, escalada respecto a la exterior.
-  // factorCapa: 0,75 (exterior) / 0,9 (media) / 1,0 (interior):
-  // la capa interior está más caliente, así que llega más lejos
-  // en la escala de color.
+  // One layer (surface) of the flame, scaled relative to the outer one.
+  // factorCapa: 0.75 (outer) / 0.9 (middle) / 1.0 (inner):
+  // the inner layer is hotter, so it reaches higher temperatures.
   function crearCapa(escala, opacidad, factorCapa, p) {
-    var NU = 42; // divisiones a lo largo de la altura
-    var NT = 32; // divisiones alrededor
+    var NU = 42; // divisions along the height
+    var NT = 32; // divisions around
     var x = [];
     var y = [];
     var z = [];
@@ -359,8 +357,8 @@
         x.push(r * Math.cos(theta) + dx);
         y.push(r * Math.sin(theta));
         z.push(zz);
-        // En la superficie frac ~ 1 (borde), así que es la zona
-        // más fría de la llama a esa altura.
+        // On the surface frac ~ 1 (edge), so it is the coolest
+        // zone of the flame at that height.
         tempC.push(colorLlama(tempLocal(p, u, 1, factorCapa), hollinLocal(p, u, 1), p.parametros.temperatura));
       }
     }
@@ -388,18 +386,18 @@
       i: ii,
       j: jj,
       k: kk,
-      vertexcolor: tempC, // color calculado en cada vértice (Planck + CH*)
+      vertexcolor: tempC, // color calculated at each vertex (Planck + CH*)
       opacity: opacidad,
       flatshading: false,
       lighting: { ambient: 0.7, diffuse: 0.6, specular: 0.4, roughness: 0.6 },
       lightposition: { x: 100, y: 200, z: 1000 },
       hoverinfo: "skip",
       showscale: false,
-      name: "Llama",
+      name: "Flame",
     };
   }
 
-  // Nube de puntos dentro del volumen de la llama.
+  // Point cloud inside the volume of the flame.
   function crearVolumen(p) {
     var rand = mulberry32(20261114);
     var N = 2200;
@@ -411,7 +409,7 @@
     for (var n = 0; n < N; n++) {
       var u = Math.pow(rand(), 1.3);
       var theta = rand() * 2 * Math.PI;
-      var frac = Math.sqrt(rand()); // 0 = centro, 1 = borde
+      var frac = Math.sqrt(rand()); // 0 = center, 1 = edge
       var rBase = radioPerfil(u, { parametros: p.parametros });
       var r = rBase * frac;
       var dx = 0.1 * p.parametros.radioMax * u * u * p.parametros.gravedad;
@@ -434,12 +432,12 @@
         line: { width: 0 },
       },
       hoverinfo: "skip",
-      name: "Volumen caliente",
+      name: "Hot volume",
     };
   }
 
-  // Barra de temperatura: rango real de la llama dibujada (mín. del borde - máx.)
-  // con los mismos colores del hollín. Cambia con cada slider.
+  // Temperature bar: real range of the drawn flame (edge min. - max.)
+  // with the same soot colors. It changes with every slider.
   function crearBarraTemperatura(p) {
     var tMin = Math.round(tempLocal({ parametros: p }, 1, 1, 0.75));
     var tMax = p.temperatura;
@@ -456,20 +454,20 @@
         colorscale: escalaTemperatura(tMin, tMax, tMax),
         showscale: true,
         colorbar: {
-          title: { text: "Temperatura (°C)<br><sub>máx. " + tMax + " °C</sub>", side: "right" },
+          title: { text: "Temperature (°C)<br><sub>max. " + tMax + " °C</sub>", side: "right" },
           thickness: 12, len: 0.45, x: 0.98, xanchor: "right", y: 0.04, yanchor: "bottom",
           tickfont: { color: "#e5e5e5" },
         },
       },
       hoverinfo: "skip",
-      name: "Escala",
+      name: "Scale",
     };
   }
 
-  // ---------- Dibujo ----------
+  // ---------- Drawing ----------
 
-  // Compuestos de PSI-68 (FLEX-2): deslizadores con data-hollin y data-nombre.
-  // Devuelve null si no hay ninguno activo (se usa el hidrocarburo genérico).
+  // PSI-68 (FLEX-2) compounds: sliders with data-hollin and data-nombre.
+  // Returns null if none is active (the generic hydrocarbon is used).
   function leerMezcla() {
     var total = 0, hollin = 0, nombres = [];
     document.querySelectorAll("input[data-compuesto]").forEach(function (el) {
@@ -505,23 +503,23 @@
     set("diametro-valor", p.diametroQuemador.toFixed(1) + " cm");
     set(
       "info-quemador",
-      "Ø " + p.diametroQuemador.toFixed(1) + " cm — las medidas en cm se escalan ×" +
-        p.factorEscala.toFixed(2) + " respecto a la referencia de 0,6 cm"
+      "Ø " + p.diametroQuemador.toFixed(1) + " cm — measurements in cm are scaled ×" +
+        p.factorEscala.toFixed(2) + " relative to the 0.6 cm reference"
     );
-    set("info-altura", p.altura.toFixed(1) + " cm (aprox.)");
-    set("info-ancho", p.ancho.toFixed(1) + " cm (aprox.)");
-    set("info-temperatura", p.temperatura + " °C aprox.");
+    set("info-altura", p.altura.toFixed(1) + " cm (approx.)");
+    set("info-ancho", p.ancho.toFixed(1) + " cm (approx.)");
+    set("info-temperatura", "approx. " + p.temperatura + " °C");
     set("info-forma", p.forma);
     set("info-color", p.colorDominante);
     set("info-color-explicacion", p.colorExplicacion);
-    set("info-combustible", p.combustible + " (hollín relativo " + p.hollin.toFixed(2) + ")");
+    set("info-combustible", p.combustible + " (relative soot " + p.hollin.toFixed(2) + ")");
     set(
       "info-oxigeno",
       p.oxigeno < 18
-        ? "Oxígeno bajo: en este modelo la llama es más pequeña y menos caliente."
+        ? "Low oxygen: in this model the flame is smaller and cooler."
         : p.oxigeno > 28
-          ? "Oxígeno alto: en este modelo la llama es más grande y más caliente."
-          : "Oxígeno cercano al del aire (21 %)."
+          ? "High oxygen: in this model the flame is bigger and hotter."
+          : "Oxygen close to that of air (21 %)."
     );
   }
 
@@ -529,9 +527,8 @@
     var p = leerParametros();
     actualizarInfo(p);
 
-    // Quemador con el diámetro que puso el usuario (antes su tamaño
-    // dependía del de la llama) y mecha fina proporcional a él.
-    // La llama sigue naciendo 0,4 cm por encima: el cilindro no la tapa.
+    // Burner with the diameter set by the user and a thin wick proportional to it.
+    // The flame starts 0.4 cm above it: the cylinder does not hide it.
     var radioQuemador = p.radioQuemador;
     var radioMecha = Math.max(0.03, radioQuemador * 0.2);
     var datos = [
@@ -540,19 +537,19 @@
       crearCapa(0.4, 0.55, 1.0, { parametros: p }),
       crearVolumen({ parametros: p }),
       crearBarraTemperatura(p),
-      crearCilindro(radioMecha, 0, p.baseZ, "#1e293b", 0.95, "Mecha"),
-      crearCilindro(radioQuemador, -0.4, 0, "#475569", 0.95, "Quemador"),
+      crearCilindro(radioMecha, 0, p.baseZ, "#1e293b", 0.95, "Wick"),
+      crearCilindro(radioQuemador, -0.4, 0, "#475569", 0.95, "Burner"),
     ];
 
     var rango = Math.max(p.altura, p.ancho) * 0.65 + 0.5;
-    // Estilo visual de FireSpace GX (visor gris tipo editor 3D). Sólo colores y márgenes.
+    // FireSpace GX visual style (grey viewer like a 3D editor). Colors and margins only.
     var ejeVisor = {
       color: "#b5b5b5",
       gridcolor: "#565656",
       zerolinecolor: "#7fbf2a",
       backgroundcolor: "#3b3b3b",
       showbackground: true,
-      showspikes: false, // sin las líneas guía blancas al pasar el ratón
+      showspikes: false, // no white guide lines on mouse hover
     };
     var layout = {
       paper_bgcolor: "#3b3b3b",
@@ -560,13 +557,13 @@
       margin: { l: 0, r: 0, t: 0, b: 0 },
       showlegend: false,
       hovermode: false,
-      uirevision: "llama", // conserva el giro/zoom del usuario al mover los sliders
+      uirevision: "llama", // keeps the user's rotation/zoom when sliders move
       scene: {
         hovermode: false,
         bgcolor: "#3b3b3b",
         xaxis: Object.assign({ title: "X (cm)", range: [-rango, rango] }, ejeVisor),
         yaxis: Object.assign({ title: "Y (cm)", range: [-rango, rango] }, ejeVisor),
-        zaxis: Object.assign({ title: "Altura (cm)", range: [-1.0, p.baseZ + p.altura + 1.2] }, ejeVisor),
+        zaxis: Object.assign({ title: "Height (cm)", range: [-1.0, p.baseZ + p.altura + 1.2] }, ejeVisor),
         aspectmode: "manual",
         aspectratio: { x: 1, y: 1, z: 1.3 },
         camera: { eye: { x: 1.7, y: 1.7, z: 0.9 } },

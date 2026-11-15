@@ -1,32 +1,32 @@
-/* Comportamiento compartido: menú lateral + utilidades de gráficas */
+/* Shared behavior: side menu + chart utilities */
 (function () {
   const app = document.getElementById('app');
   const CLAVE = 'fsgx-sidebar';
   const leer = () => { try { return localStorage.getItem(CLAVE); } catch (e) { return null; } };
   const guardar = (v) => { try { localStorage.setItem(CLAVE, v); } catch (e) {} };
 
-  // En simulación y pantallas pequeñas el menú arranca contraído
+  // On the simulation page and on small screens the menu starts collapsed
   const inicial = leer() ?? (document.body.classList.contains('pagina-simulacion') || innerWidth < 760 ? 'min' : 'max');
   if (inicial === 'min' || innerWidth < 760) app.classList.add('sb-contraida');
 
   function alternar(forzar) {
     const min = app.classList.toggle('sb-contraida', forzar);
     guardar(min ? 'min' : 'max');
-    document.getElementById('btnSidebar').setAttribute('aria-label', min ? 'Expandir menú lateral' : 'Contraer menú lateral');
+    document.getElementById('btnSidebar').setAttribute('aria-label', min ? 'Expand side menu' : 'Collapse side menu');
     window.dispatchEvent(new Event('fsgx:layout'));
     setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
   }
   document.getElementById('btnSidebar').addEventListener('click', () => alternar());
   document.getElementById('btnMenu').addEventListener('click', () => alternar(false));
 
-  // Botones "?" de cada gráfica: muestran/ocultan la leyenda
+  // "?" buttons on each chart: show/hide the caption
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-ayuda]');
     if (b) b.closest('.grafica').classList.toggle('leyenda-oculta');
   });
 })();
 
-/* ---------- utilidades de gráficas (Chart.js) ---------- */
+/* ---------- chart utilities (Chart.js) ---------- */
 window.FSGX = window.FSGX || {};
 FSGX.colores = {
   metano: '#22d3ee', etileno: '#ff7a1a', propano: '#a78bfa', metanol: '#3b82f6',
@@ -46,7 +46,7 @@ FSGX.configurarChart = function () {
   Chart.defaults.animation.duration = 450;
 };
 
-/* Línea horizontal de umbral (zona de peligro) */
+/* Horizontal threshold line (danger zone) */
 FSGX.pluginUmbral = {
   id: 'umbral',
   afterDraw(chart, _a, opts) {
@@ -61,12 +61,12 @@ FSGX.pluginUmbral = {
     ctx.strokeStyle = '#ff4d5e'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.moveTo(a.left, py); ctx.lineTo(a.right, py); ctx.stroke();
     ctx.setLineDash([]); ctx.fillStyle = '#ff8a95'; ctx.font = '600 10px Inter, sans-serif';
-    ctx.fillText(opts.texto || 'Umbral de riesgo', a.left + 6, py - 5);
+    ctx.fillText(opts.texto || 'Risk threshold', a.left + 6, py - 5);
     ctx.restore();
   },
 };
 
-/* Anillo tipo medidor */
+/* Gauge-style ring */
 FSGX.anillo = function (canvas, valor, max, colores) {
   return new Chart(canvas, {
     type: 'doughnut',
@@ -80,7 +80,7 @@ FSGX.degradado = function (ctx, area, c1, c2) {
   g.addColorStop(0, c1); g.addColorStop(1, c2); return g;
 };
 
-/* Índice de riesgo en cliente (mismo criterio que modelo.py) */
+/* Client-side risk index */
 FSGX.peligrosidad = function (c) {
   const cl = (v) => Math.max(0, Math.min(1, v));
   const vol = c.flash == null ? 1 : cl((60 - c.flash) / 80);

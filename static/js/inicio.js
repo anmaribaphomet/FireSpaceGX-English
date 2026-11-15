@@ -1,24 +1,24 @@
 /* =====================================================================
-   FireSpace GX · Inicio
-   Dashboard de ejemplo (PSI-68). Autocontenido: sólo necesita Chart.js
-   y el endpoint GET /api/inicio/dashboard de app.py.
+   FireSpace GX · Home
+   Sample dashboard (PSI-68). Self-contained: it only needs Chart.js
+   (it does not use any app.py route).
    ===================================================================== */
 (function () {
   'use strict';
 
-  /* ---------- datos del dashboard de ejemplo ----------
-     Propiedades de combustibles: valores de referencia aproximados de literatura abierta.
-     Series por ensayo (calor, oxígeno): DEMOSTRATIVAS. Cuando ApiGx genere dashboards
-     con datos de data/firespace.db, reemplaza DATOS por esa respuesta con el mismo formato. */
+  /* ---------- sample dashboard data ----------
+     Fuel properties: approximate reference values from open literature.
+     Series per test (heat, oxygen): DEMO DATA. When ApiGx builds dashboards
+     from data/firespace.db, replace this data with that response using the same format. */
   const COMBUSTIBLES = {
-    metano:  { nombre: 'Metano',    programa: 'ACME', lfl: 5.0,  ufl: 15.0, flash: null, dhc: 50.0, color: '#22d3ee' },
-    etileno: { nombre: 'Etileno',   programa: 'ACME', lfl: 2.7,  ufl: 36.0, flash: null, dhc: 47.2, color: '#ff7a1a' },
-    heptano: { nombre: 'n-Heptano', programa: 'FLEX', lfl: 1.05, ufl: 6.7,  flash: -4,   dhc: 44.6, color: '#ff4d5e' },
-    metanol: { nombre: 'Metanol',   programa: 'FLEX', lfl: 6.0,  ufl: 36.0, flash: 11,   dhc: 19.9, color: '#3b82f6' },
+    metano:  { nombre: 'Methane',    programa: 'ACME', lfl: 5.0,  ufl: 15.0, flash: null, dhc: 50.0, color: '#22d3ee' },
+    etileno: { nombre: 'Ethylene',  programa: 'ACME', lfl: 2.7,  ufl: 36.0, flash: null, dhc: 47.2, color: '#ff7a1a' },
+    heptano: { nombre: 'n-Heptane', programa: 'FLEX', lfl: 1.05, ufl: 6.7,  flash: -4,   dhc: 44.6, color: '#ff4d5e' },
+    metanol: { nombre: 'Methanol',  programa: 'FLEX', lfl: 6.0,  ufl: 36.0, flash: 11,   dhc: 19.9, color: '#3b82f6' },
   };
   const EJEMPLO = {
-    aviso: 'Datos demostrativos generados para ilustrar el tipo de dashboard que crea ApiGx.',
-    ensayos: ['E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8'],
+    aviso: 'Demo data generated to show the kind of dashboard ApiGx creates.',
+    ensayos: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8'],
     oxigeno: [17, 19, 21, 21, 25, 27, 30, 34],
     umbral: 70,
     calor: {
@@ -55,7 +55,7 @@
     };
   }
 
-  /* ---------- estilo global de Chart.js ---------- */
+  /* ---------- global Chart.js style ---------- */
   function configurarChart() {
     Chart.defaults.color = '#8584a6';
     Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
@@ -66,7 +66,7 @@
     Chart.defaults.maintainAspectRatio = false;
   }
 
-  /* Franja roja + línea punteada del umbral de riesgo */
+  /* Red band + dashed line for the risk threshold */
   const pluginUmbral = {
     id: 'umbral',
     afterDraw(chart, _args, opts) {
@@ -83,7 +83,7 @@
       ctx.setLineDash([]);
       ctx.fillStyle = '#ff8a95';
       ctx.font = '600 10px Inter, sans-serif';
-      ctx.fillText(opts.texto || 'Umbral de riesgo', a.left + 6, y - 5);
+      ctx.fillText(opts.texto || 'Risk threshold', a.left + 6, y - 5);
       ctx.restore();
     },
   };
@@ -97,7 +97,7 @@
     return g;
   }
 
-  /* ---------- 1) Liberación de calor por ensayo ---------- */
+  /* ---------- 1) Heat release per test ---------- */
   function graficaCalor(d) {
     new Chart(document.getElementById('gCalor'), {
       type: 'line',
@@ -113,14 +113,14 @@
       },
       options: {
         interaction: { mode: 'index', intersect: false },
-        scales: { y: { min: 0, max: 100, title: { display: true, text: 'Calor relativo (0-100)' } } },
-        plugins: { umbral: { valor: d.umbral, texto: `Umbral de riesgo (${d.umbral})` } },
+        scales: { y: { min: 0, max: 100, title: { display: true, text: 'Relative heat (0-100)' } } },
+        plugins: { umbral: { valor: d.umbral, texto: `Risk threshold (${d.umbral})` } },
       },
       plugins: [pluginUmbral],
     });
   }
 
-  /* ---------- 2) Pico máximo por compuesto (anillos) ---------- */
+  /* ---------- 2) Peak value per compound (rings) ---------- */
   function kpis(d) {
     const cont = document.getElementById('kpisEjemplo');
     cont.innerHTML = '';
@@ -143,13 +143,13 @@
     });
   }
 
-  /* ---------- 3) Composición del índice de riesgo ---------- */
+  /* ---------- 3) Breakdown of the risk index ---------- */
   function graficaComponentes(d) {
     const capas = [
-      ['volatilidad', 'Volatilidad', '#ff4d5e'],
-      ['reactividad', 'Reactividad', '#ff7a1a'],
-      ['rango', 'Rango inflamable', '#ffc93c'],
-      ['energia', 'Energía', '#22d3ee'],
+      ['volatilidad', 'Volatility', '#ff4d5e'],
+      ['reactividad', 'Reactivity', '#ff7a1a'],
+      ['rango', 'Flammable range', '#ffc93c'],
+      ['energia', 'Energy', '#22d3ee'],
     ];
     new Chart(document.getElementById('gComponentes'), {
       type: 'bar',
@@ -162,12 +162,12 @@
         })),
       },
       options: {
-        scales: { x: { stacked: true }, y: { stacked: true, max: 100, title: { display: true, text: 'Índice (0-100)' } } },
+        scales: { x: { stacked: true }, y: { stacked: true, max: 100, title: { display: true, text: 'Index (0-100)' } } },
       },
     });
   }
 
-  /* ---------- 4) Sensibilidad al oxígeno ---------- */
+  /* ---------- 4) Sensitivity to oxygen ---------- */
   function graficaOxigeno(d) {
     new Chart(document.getElementById('gOxigeno'), {
       type: 'bubble',
@@ -182,17 +182,17 @@
       options: {
         scales: {
           x: { min: 15, max: 36, title: { display: true, text: 'O₂ (%)' } },
-          y: { min: 0, max: 100, title: { display: true, text: 'Calor relativo' } },
+          y: { min: 0, max: 100, title: { display: true, text: 'Relative heat' } },
         },
-        plugins: { umbral: { valor: d.umbral, texto: 'Pico de riesgo' } },
+        plugins: { umbral: { valor: d.umbral, texto: 'Risk peak' } },
       },
       plugins: [pluginUmbral],
     });
   }
 
-  /* ---------- 5) Rangos de inflamabilidad ---------- */
+  /* ---------- 5) Flammability ranges ---------- */
   function rangos(d) {
-    const escala = 40; // % vol que ocupa todo el ancho
+    const escala = 40; // % vol covered by the full width
     document.getElementById('rangosEjemplo').innerHTML = d.compuestos.map((c) => `
       <div class="rango">
         <div class="rango__cab"><span>${c.nombre} · ${c.programa}</span><span>${c.lfl}% – ${c.ufl}%</span></div>
@@ -202,27 +202,27 @@
       </div>`).join('');
   }
 
-  /* ---------- Resumen: ¿qué cantidad representa un pico de riesgo? ---------- */
+  /* ---------- Summary: what amount is a risk peak? ---------- */
   function resumen(d) {
     const cruzan = d.compuestos.filter((c) => c.oxigeno_cruce != null);
     const seguros = d.compuestos.filter((c) => c.oxigeno_cruce == null);
     let html = cruzan.length
-      ? `<strong style="color:#ffa24d">Pico de riesgo:</strong> superaron el umbral ` +
-        cruzan.map((c) => `${c.nombre} desde ${c.oxigeno_cruce}% O₂`).join(', ') + '.'
-      : 'Ningún compuesto superó el umbral de riesgo en esta serie.';
+      ? `<strong style="color:#ffa24d">Risk peak:</strong> exceeded the threshold: ` +
+        cruzan.map((c) => `${c.nombre} from ${c.oxigeno_cruce}% O₂`).join(', ') + '.'
+      : 'No compound exceeded the risk threshold in this series.';
     if (seguros.some((c) => c.id === 'metanol')) {
-      html += ' El metanol nunca lo superó, pero su llama casi invisible complica la detección.';
+      html += ' Methanol never exceeded it, but its almost invisible flame makes it hard to detect.';
     }
     document.getElementById('resumenPico').innerHTML = html;
   }
 
-  /* ---------- arranque ---------- */
+  /* ---------- start ---------- */
   function iniciar() {
     const resumenEl = document.getElementById('resumenPico');
-    if (!resumenEl) return; // no estamos en la página de inicio
+    if (!resumenEl) return; // we are not on the home page
 
     if (typeof Chart === 'undefined') {
-      resumenEl.textContent = 'No se pudo cargar Chart.js. Revisa tu conexión o la etiqueta <script> de Chart.js.';
+      resumenEl.textContent = 'Chart.js could not be loaded. Check your connection or the Chart.js <script> tag.';
       return;
     }
     configurarChart();
@@ -238,8 +238,8 @@
       rangos(d);
       resumen(d);
     } catch (err) {
-      console.error('Dashboard de inicio:', err);
-      resumenEl.textContent = 'No se pudieron cargar los datos del dashboard (' + err.message + ').';
+      console.error('Home dashboard:', err);
+      resumenEl.textContent = 'The dashboard data could not be loaded (' + err.message + ').';
     }
   }
 

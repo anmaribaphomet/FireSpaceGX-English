@@ -12,155 +12,164 @@ from openai import OpenAI
 import biblioteca
 
 load_dotenv(override=True)
-# el .env siempre manda, aunque la terminal tenga valores viejos
+# the .env file always wins, even if the terminal has old values
+
+
+def setting(name, legacy_name, default):
+    """Reads a setting from .env. The Spanish names of the original project are still accepted."""
+    return os.getenv(name) or os.getenv(legacy_name) or default
+
 
 app = Flask(__name__)
 
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.getenv("OPENROUTER_API_KEY"),
-    timeout=45,       # segundos máximos de espera por consulta
-    max_retries=0,    # sin reintentos ocultos: si falla, se avisa de inmediato
+    timeout=45,       # maximum seconds to wait for each request
+    max_retries=0,    # no hidden retries: if it fails, the user is told right away
 )
 
-# ---------- CONFIGURACIÓN DEL ASISTENTE ----------
+# ---------- ASSISTANT SETTINGS ----------
 
-# Modelo de IA: se puede cambiar en el archivo .env con la línea MODELO_IA=...
-MODELO = os.getenv("MODELO_IA", "openrouter/free")
+# AI model: can be changed in the .env file with the line AI_MODEL=...
+MODELO = setting("AI_MODEL", "MODELO_IA", "openrouter/free")
 MAX_CARACTERES_PREGUNTA = 800
 FRAGMENTOS_POR_PREGUNTA = 6
-MAX_TOKENS_CLASIFICAR = 300     # margen suficiente incluso para modelos que "piensan" antes de responder
-MAX_TOKENS_RESPUESTA = 2200     # incluye el diseño del panel
+MAX_TOKENS_CLASIFICAR = 300     # enough room even for models that "think" before answering
+MAX_TOKENS_RESPUESTA = 2200     # includes the dashboard design
 
-# Memoria de la conversación: el navegador envía solo el intercambio anterior
-# (la pregunta anterior y su respuesta), para entender preguntas como "¿y eso por qué?".
-MAX_MENSAJES_HISTORIAL = 2        # 1 pregunta + 1 respuesta
+# Conversation memory: the browser only sends the previous exchange
+# (the previous question and its answer), to understand questions like "and why is that?".
+MAX_MENSAJES_HISTORIAL = 2        # 1 question + 1 answer
 MAX_CARACTERES_POR_MENSAJE = 700
-PALABRAS_PREGUNTA_CORTA = 4       # preguntas así de cortas suelen depender de la anterior ("¿y eso por qué?")
+PALABRAS_PREGUNTA_CORTA = 4       # questions this short usually depend on the previous one ("and why?")
 
-# Palabras que indican que la pregunta se refiere a algo dicho antes
+# Words that show the question refers to something said before
 PATRON_SEGUIMIENTO = re.compile(
-    r"^y\b|\b(eso|esto|esa|ese|esos|esas|este|esta|estos|estas|ello|ahi|alli|aquello|"
-    r"tambien|entonces|lo anterior|lo mismo|mismo experimento|dicho experimento)\b"
+    r"^(and|so|but|then)\b|\b(that|this|those|these|it|its|there|also|the same|same experiment|"
+    r"that experiment|this experiment|the previous|mentioned)\b"
 )
 
 
 def depende_de_la_anterior(pregunta):
-    """True si la pregunta parece continuar la anterior ("¿y eso por qué?", "¿qué materiales usó ese experimento?")."""
+    """True if the question seems to continue the previous one ("and why is that?", "what materials did that experiment use?")."""
     texto = biblioteca.sin_acentos(pregunta.lower()).strip(" ¿?¡!.,")
     return len(texto.split()) <= PALABRAS_PREGUNTA_CORTA or bool(PATRON_SEGUIMIENTO.search(texto))
 
-# Razonamiento interno del modelo ("pensar" antes de responder). "none" lo desactiva:
-# respuestas más rápidas y sin el riesgo de que el modelo gaste todos sus tokens pensando.
-# Se puede cambiar en el .env con RAZONAMIENTO_IA=low (o medium). Con "modelo" no se envía el ajuste.
-RAZONAMIENTO = os.getenv("RAZONAMIENTO_IA", "none").strip().lower()
-enviar_ajuste_razonamiento = RAZONAMIENTO not in ("", "modelo")
+# Internal reasoning of the model ("thinking" before answering). "none" turns it off:
+# faster answers and no risk of the model spending all its tokens thinking.
+# Can be changed in .env with AI_REASONING=low (or medium). With "model" the setting is not sent.
+RAZONAMIENTO = setting("AI_REASONING", "RAZONAMIENTO_IA", "none").strip().lower()
+enviar_ajuste_razonamiento = RAZONAMIENTO not in ("", "model", "modelo")
 
-# Modo ahorro: con CLASIFICAR_CON_IA=no en el .env, cada pregunta usa 1 consulta a la IA en vez de 2.
-# Los saludos se detectan con patrones y la búsqueda usa solo el glosario de biblioteca.py.
-CLASIFICAR_CON_IA = os.getenv("CLASIFICAR_CON_IA", "si").strip().lower() not in ("no", "false", "0")
+# Saving mode: with CLASSIFY_WITH_AI=no in .env, each question uses 1 AI request instead of 2.
+# Greetings are detected with patterns and the search only uses the glossary in biblioteca.py.
+CLASIFICAR_CON_IA = setting("CLASSIFY_WITH_AI", "CLASIFICAR_CON_IA", "yes").strip().lower() not in ("no", "false", "0")
 
 PATRON_CONVERSACION = re.compile(
-    r"^(hola|buen[oa]s|gracias|muchas gracias|hey|saludos|que tal)\b"
-    r"|quien eres|que eres|hablame de ti|presentate"
-    r"|que (puedes|sabes) hacer|de que (temas )?(puedes|sabes) hablar|sobre que (temas )?(puedes|sabes)"
-    r"|de donde (obtienes|sacas|viene)|tus fuentes|como funcionas"
-    r"|eres (de la |un producto (oficial )?de la )?nasa|puedes (buscar|navegar) (en )?internet"
-    r"|que (te )?puedo preguntar|preguntarte|ayudarme|en que me (puedes )?ayudar"
-    r"|quien te (creo|hizo|desarrollo|programo)|quienes te|tus creadores"
-    r"|chatgpt|gemini|otras? ia|otros? asistentes?|diferencia entre tu"
-    r"|tu tema|de que trata (esto|firespace|la pagina)|que es firespace"
+    r"^(hi|hello|hey|hiya|howdy|greetings|good (morning|afternoon|evening)|thanks|thank you|many thanks|"
+    r"whats up|what's up|how are you)\b"
+    r"|who are you|what are you|tell me about yourself|introduce yourself"
+    r"|what (can|do) you (do|know)|what (topics )?can you (talk|help) (about|with)|what do you talk about"
+    r"|where do you get|your sources|how do you work"
+    r"|are you (from |made by |an official product of |a product of )?nasa|can you (search|browse) (the )?(internet|web)"
+    r"|what can i ask|can i ask you|help me|how can you help"
+    r"|who (created|made|built|developed|programmed) you|who are your|your creators"
+    r"|chatgpt|gemini|other ais?\b|other assistants?|difference between you"
+    r"|your topic|what is (this|firespace|this page|this site) about|what is firespace"
 )
 
-PERSONALIDAD = """Personalidad del asistente de FireSpace:
-- Eres cálido, cercano y entusiasta, como un amigo al que le apasiona el espacio y le encanta contagiar esa curiosidad. Siempre eres respetuoso y nunca te burlas de nadie.
-- Por defecto hablas sencillo, para que cualquier persona te entienda sin saber de ciencia: frases cortas, palabras de todos los días, comparaciones con cosas cotidianas, y cada término técnico lo explicas en pocas palabras la primera vez que lo usas.
-- Solo te pones técnico si la persona escribe con lenguaje técnico o dice que es estudiante, investigador o ingeniero del tema.
-- Adapta tu tono al de la persona: si escribe casual, con risas o expresiones mexicanas, respóndele con ese mismo tono relajado; si escribe formal, responde formal.
-- Puedes usar algún emoji de vez en cuando (por ejemplo 🔥, 🚀, 😮), sin exagerar y nunca en respuestas técnicas.
-- Tu tema es la combustión en el espacio y la seguridad contra incendios en la exploración espacial; siempre llevas la conversación de vuelta a eso con naturalidad."""
+PERSONALIDAD = """Personality of the FireSpace assistant:
+- You are warm, friendly and enthusiastic, like a friend who loves space and enjoys sharing that curiosity. You are always respectful and never make fun of anyone.
+- By default you speak simply, so anyone can understand you without a science background: short sentences, everyday words, comparisons with everyday things, and you explain every technical term in a few words the first time you use it.
+- You only get technical if the person writes in technical language or says they are a student, researcher or engineer in the field.
+- Match the person's tone: if they write casually, with laughter or slang, answer in the same relaxed tone; if they write formally, answer formally.
+- You may use an emoji now and then (for example 🔥, 🚀, 😮), without overdoing it and never in technical answers.
+- Your topic is combustion in space and fire safety in space exploration; you always bring the conversation back to it naturally."""
 
 PROMPT_CLASIFICAR = (
-    "Analiza el mensaje del usuario.\n"
-    "- Si es conversación cotidiana (saludos, agradecimientos, cómo estás), una reacción o expresión "
-    "(sorpresa, risa, asombro, como \"wow\", \"jajaja\", \"alatorre\", \"no manches\") o una pregunta sobre "
-    "el asistente, FireSpace o sus fuentes (quién eres, qué puedes hacer, de qué temas hablas, "
-    "cómo funcionas, de dónde sacas tu información), responde exactamente: META\n"
-    "- En cualquier otro caso, conviértelo en entre 5 y 10 palabras clave en inglés para buscar "
-    "en documentos técnicos de NASA sobre combustión. Incluye sinónimos técnicos y nombres de "
-    "experimentos si se mencionan. Si la pregunta es amplia (por ejemplo, datos curiosos), "
-    "elige términos generales y variados del tema. Si se incluye una pregunta anterior, úsala solo para "
-    "entender a qué se refiere el mensaje actual (por ejemplo, \"eso\" o \"ese experimento\"). "
-    "Responde SOLO con las palabras separadas por espacios."
+    "Analyze the user's message.\n"
+    "- If it is small talk (greetings, thanks, how are you), a reaction or expression "
+    "(surprise, laughter, amazement, such as \"wow\", \"lol\", \"no way\", \"omg\") or a question about "
+    "the assistant, FireSpace or its sources (who are you, what can you do, what topics you cover, "
+    "how you work, where your information comes from), answer exactly: META\n"
+    "- Otherwise, turn it into 5 to 10 English keywords to search "
+    "NASA technical documents about combustion. Include technical synonyms and experiment "
+    "names if they are mentioned. If the question is broad (for example, fun facts), "
+    "choose general and varied terms from the field. If a previous question is included, use it only to "
+    "understand what the current message refers to (for example, \"that\" or \"that experiment\"). "
+    "Answer ONLY with the words separated by spaces."
 )
 
 PROMPT_RESPUESTA = PERSONALIDAD + """
 
-Respondes con base en los fragmentos numerados de fuentes oficiales de NASA que se te entregan.
-Reglas obligatorias:
-1. Todo dato concreto (cifras, resultados, condiciones de prueba, nombres y objetivos de experimentos, fechas, hechos históricos y conclusiones de NASA) debe venir de los fragmentos y llevar su cita entre corchetes, por ejemplo [2] o [1][3].
-2. Puedes usar conocimiento científico general para explicar conceptos básicos, conectar ideas, comparar, razonar o proponer, como lo haría un buen profesor. Esas partes no llevan cita y deben presentarse como explicación o razonamiento, nunca como un resultado de NASA.
-3. Nunca inventes datos, cifras, resultados, fechas, autores, publicaciones ni enlaces. Si la pregunta pide un dato que no aparece en los fragmentos, dilo con naturalidad, por ejemplo: "No tengo información sobre...".
-4. Si la pregunta parte de una idea incorrecta, corrígela con base en las fuentes.
-5. Sigue la personalidad descrita arriba: por defecto, explica de forma amigable y sencilla para cualquier persona; si la pregunta es técnica, responde con la precisión que esperaría un investigador o ingeniero aeroespacial. Ve al grano: la extensión debe ser proporcional a la pregunta, y una pregunta sencilla merece una respuesta corta.
-6. Responde en español; los fragmentos están en inglés: tradúcelos con fidelidad.
-7. Escribe como si explicaras directamente, con tus propias palabras. Nunca menciones de dónde sacas la información con frases como "las fuentes", "los fragmentos", "los documentos", "el texto" o "la información proporcionada": las citas entre corchetes ya indican el origen y el usuario no sabe qué documentos recibiste. Escribe en texto plano, sin Markdown (nada de asteriscos ni almohadillas); para listas usa guiones.
-8. Puede haber mensajes anteriores de la conversación. Úsalos solo para entender a qué se refiere la pregunta actual (por ejemplo, "eso" o "ese experimento"). Los datos y las citas deben salir únicamente de los fragmentos de esta pregunta.
-9. Al terminar tu respuesta, escribe una línea que diga exactamente ###PANEL### y debajo un JSON (sin texto extra ni comillas invertidas) que diseñe un tablero visual SOBRE EL TEMA de la pregunta (no sobre las fuentes), para que se entienda de un vistazo. Elige entre 3 y 5 bloques que mejor encajen con la información y varía tipos y orden según el tema; incluye una "grafica" siempre que haya cifras o categorías comparables. Tipos de bloque disponibles:
-- "kpis": indicadores principales. items: [{"icono": "💧", "valor": "1–5 mm", "titulo": "Diámetro de gotas", "detalle": "Rango del equipo"}]
-- "grafica": "subtipo" = "barras", "barras_horizontales", "lineas", "dona" o "radar"; "unidad"; "etiquetas": ["A", "B"]; "series": [{"nombre": "...", "valores": [1, 5]}] (los valores son números y hay uno por etiqueta)
-- "pasos": cómo funciona un proceso. items: [{"titulo": "Ignición", "detalle": "..."}]
-- "comparacion": experimentos o elementos para comparar. items: [{"nombre": "FLEX", "resumen": "Inflamabilidad y extinción", "detalles": [{"campo": "Objetivo", "valor": "..."}]}]
-- "lista": puntos con ícono (por ejemplo, importancia o aplicaciones). items: [{"icono": "🚀", "titulo": "...", "texto": "..."}]
-- "linea_tiempo": items: [{"fecha": "2010", "titulo": "...", "texto": "..."}]
-- "tabla": "columnas": ["..."], "filas": [["...", "..."]]
-- "dato": un dato curioso destacado. "icono", "texto"
-Formato: {"titulo": "título corto del tema", "bloques": [{"tipo": "kpis", "titulo": "...", "citas": [2], "items": [...]}, ...]}
-Cada bloque debe incluir "citas" con los números de los fragmentos de donde sale su información. Todo lo que pongas en el tablero debe estar respaldado por los fragmentos; nunca inventes valores. Textos cortos y en lenguaje sencillo."""
+You answer based on the numbered fragments from official NASA sources that you are given.
+Mandatory rules:
+1. Every concrete fact (figures, results, test conditions, names and goals of experiments, dates, historical facts and NASA conclusions) must come from the fragments and carry its citation in square brackets, for example [2] or [1][3].
+2. You may use general scientific knowledge to explain basic concepts, connect ideas, compare, reason or suggest, as a good teacher would. Those parts carry no citation and must be presented as explanation or reasoning, never as a NASA result.
+3. Never make up data, figures, results, dates, authors, publications or links. If the question asks for something that is not in the fragments, say so naturally, for example: "I don't have information about...".
+4. If the question starts from a wrong idea, correct it based on the sources.
+5. Follow the personality described above: by default, explain in a friendly and simple way for anyone; if the question is technical, answer with the precision a researcher or aerospace engineer would expect. Get to the point: the length must match the question, and a simple question deserves a short answer.
+6. Answer in English.
+7. Write as if you were explaining directly, in your own words. Never mention where the information comes from with phrases like "the sources", "the fragments", "the documents", "the text" or "the information provided": the citations in brackets already show the origin and the user does not know which documents you received. Write in plain text, without Markdown (no asterisks or hash signs); use hyphens for lists.
+8. There may be previous messages in the conversation. Use them only to understand what the current question refers to (for example, "that" or "that experiment"). Data and citations must come only from the fragments of this question.
+9. When you finish your answer, write a line that says exactly ###PANEL### and below it a JSON (no extra text and no backticks) that designs a visual dashboard ABOUT THE TOPIC of the question (not about the sources), so it can be understood at a glance. Choose 3 to 5 blocks that best fit the information and vary the types and order depending on the topic; include a "grafica" whenever there are comparable figures or categories. The JSON keys and block type names below are fixed identifiers and must be used exactly as written, but ALL the text values you write (titles, labels, descriptions) must be in English. Available block types:
+- "kpis": main indicators. items: [{"icono": "💧", "valor": "1–5 mm", "titulo": "Droplet diameter", "detalle": "Hardware range"}]
+- "grafica": "subtipo" = "barras" (bars), "barras_horizontales" (horizontal bars), "lineas" (lines), "dona" (doughnut) or "radar"; "unidad" (unit); "etiquetas" (labels): ["A", "B"]; "series": [{"nombre": "...", "valores": [1, 5]}] (values are numbers, one per label)
+- "pasos": how a process works, step by step. items: [{"titulo": "Ignition", "detalle": "..."}]
+- "comparacion": experiments or elements to compare. items: [{"nombre": "FLEX", "resumen": "Flammability and extinction", "detalles": [{"campo": "Goal", "valor": "..."}]}]
+- "lista": points with an icon (for example, importance or applications). items: [{"icono": "🚀", "titulo": "...", "texto": "..."}]
+- "linea_tiempo": timeline. items: [{"fecha": "2010", "titulo": "...", "texto": "..."}]
+- "tabla": table. "columnas": ["..."], "filas": [["...", "..."]]
+- "dato": a highlighted fun fact. "icono", "texto"
+Format: {"titulo": "short title of the topic", "bloques": [{"tipo": "kpis", "titulo": "...", "citas": [2], "items": [...]}, ...]}
+Every block must include "citas" with the numbers of the fragments its information comes from. Everything you put on the dashboard must be backed by the fragments; never make up values. Short texts in plain language."""
 
 PROMPT_META = PERSONALIDAD + """
 
-Ahora estás conversando. Responde de forma natural y breve, exactamente a lo que la persona dice o pregunta.
-Reglas:
-1. Para hablar de ti, de FireSpace o de tus fuentes, usa SOLO la información de la FICHA. No inventes capacidades, fuentes ni datos.
-2. Si es un saludo, un agradecimiento o charla cotidiana, responde brevemente y con amabilidad, e invita a preguntar sobre combustión en el espacio con un ejemplo.
-2b. Si es una reacción o expresión (sorpresa, risa, asombro, como "alatorre", "no manches", "wow" o "jajaja"), reacciona con la misma energía y conéctala con lo último que hablaron: puedes retomar con tus palabras algo de tu respuesta anterior o invitar a seguir con una pregunta relacionada. Si no hay conversación previa, reacciona con simpatía y pregunta qué le sorprendió. Nunca trates una expresión como si fuera un nombre o una palabra desconocida.
-3. Si te piden explicar tu tema de forma sencilla (por ejemplo, a un niño), descríbelo con palabras simples usando solo lo que dice la FICHA, sin agregar datos científicos.
-4. Si preguntan algo ajeno a FireSpace y a la combustión en el espacio, explica con amabilidad que no es tu tema y sugiere dos o tres preguntas que sí puedes responder.
-5. No agregues aquí datos científicos nuevos (solo puedes retomar lo que ya dijiste en la conversación). Si te hacen una pregunta científica, invita a la persona a hacerla directamente para responderle con fuentes. Si el mensaje parece continuar la conversación anterior pero no tienes información para responderlo, pide amablemente que lo explique un poco más.
-6. Responde en español, en texto plano, sin formato Markdown.
+You are now chatting. Answer naturally and briefly, exactly to what the person says or asks.
+Rules:
+1. To talk about yourself, FireSpace or your sources, use ONLY the information in the FACT SHEET. Do not make up capabilities, sources or data.
+2. If it is a greeting, thanks or small talk, answer briefly and kindly, and invite the person to ask about combustion in space with an example.
+2b. If it is a reaction or expression (surprise, laughter, amazement, such as "wow", "no way", "omg" or "lol"), react with the same energy and connect it with the last thing you talked about: you may recall in your own words something from your previous answer or invite them to continue with a related question. If there is no previous conversation, react warmly and ask what surprised them. Never treat an expression as if it were a name or an unknown word.
+3. If you are asked to explain your topic simply (for example, to a child), describe it in simple words using only what the FACT SHEET says, without adding scientific data.
+4. If they ask about something unrelated to FireSpace and combustion in space, kindly explain that it is not your topic and suggest two or three questions you can answer.
+5. Do not add new scientific data here (you may only recall what you already said in the conversation). If you are asked a scientific question, invite the person to ask it directly so you can answer with sources. If the message seems to continue the previous conversation but you have no information to answer it, kindly ask them to explain a bit more.
+6. Answer in English, in plain text, without Markdown formatting.
 
-FICHA:
+FACT SHEET:
 {ficha}"""
 
 DESCRIPCION_FUENTES = {
-    "PSI": "investigaciones del repositorio PSI (Physical Sciences Informatics) de NASA, que publica "
-           "los datos de experimentos de combustión hechos en la Estación Espacial Internacional y en tierra",
-    "NASA Combustion Science": "documentos (fichas de experimentos y páginas) enlazados desde la página "
-                               "NASA Combustion Science del Glenn Research Center",
+    "PSI": "investigations from NASA's PSI (Physical Sciences Informatics) repository, which publishes "
+           "the data of combustion experiments carried out on the International Space Station and on the ground",
+    "NASA Combustion Science": "documents (experiment fact sheets and pages) linked from the "
+                               "NASA Combustion Science page of the Glenn Research Center",
 }
 
+FUENTE_OFICIAL = "Official challenge list"
+
 MENSAJE_LIMITE = (
-    "Se alcanzó el límite de consultas gratuitas a la IA por hoy. "
-    "Intenta más tarde o avisa al equipo de FireSpace."
+    "The free AI request limit for today has been reached. "
+    "Try again later or let the FireSpace team know."
 )
 
 MENSAJE_SIN_INFORMACION = (
-    "No encontré información sobre esto en la biblioteca de FireSpace, que solo contiene "
-    "fuentes oficiales de NASA del reto. Prueba preguntando sobre combustión en microgravedad, "
-    "los experimentos de la ISS o la seguridad contra incendios en naves espaciales."
+    "I couldn't find information about this in the FireSpace library, which only contains "
+    "official NASA sources from the challenge. Try asking about combustion in microgravity, "
+    "ISS experiments or fire safety in spacecraft."
 )
 
 NOTA_SIN_CITAS = (
-    "\n\nNota: esta respuesta no cita ninguna fuente de la biblioteca de FireSpace; "
-    "tómala como una explicación general."
+    "\n\nNote: this answer does not cite any source from the FireSpace library; "
+    "take it as a general explanation."
 )
 
 
-# ---------- FUNCIONES DEL ASISTENTE ----------
+# ---------- ASSISTANT FUNCTIONS ----------
 
 def generar(mensajes, temperatura, max_tokens):
-    """Llama al modelo de IA y devuelve (texto, nombre_del_modelo)."""
+    """Calls the AI model and returns (text, model_name)."""
     global enviar_ajuste_razonamiento
     parametros = dict(model=MODELO, messages=mensajes, temperature=temperatura, max_tokens=max_tokens)
     inicio = time.perf_counter()
@@ -168,14 +177,14 @@ def generar(mensajes, temperatura, max_tokens):
     if enviar_ajuste_razonamiento:
         ajuste = {"effort": RAZONAMIENTO}
         if RAZONAMIENTO != "none":
-            ajuste["exclude"] = True  # que piense, pero sin devolver su razonamiento
+            ajuste["exclude"] = True  # let it think, but without returning its reasoning
         try:
             r = client.chat.completions.create(**parametros, extra_body={"reasoning": ajuste})
         except Exception as e:
             if "BadRequest" not in type(e).__name__:
                 raise
-            # Este modelo no acepta el ajuste: se reintenta sin él y no se vuelve a enviar.
-            print(f"[IA] El modelo no acepta ajustar el razonamiento ({e}); se reintenta sin el ajuste", flush=True)
+            # This model does not accept the setting: retry without it and never send it again.
+            print(f"[AI] The model does not accept the reasoning setting ({e}); retrying without it", flush=True)
             enviar_ajuste_razonamiento = False
             r = client.chat.completions.create(**parametros)
     else:
@@ -183,15 +192,15 @@ def generar(mensajes, temperatura, max_tokens):
 
     eleccion = r.choices[0]
     texto = (eleccion.message.content or "").strip()
-    print(f"[IA] {r.model} respondió en {time.perf_counter() - inicio:.1f} s "
-          f"({len(texto)} caracteres, motivo de fin: {eleccion.finish_reason})", flush=True)
+    print(f"[AI] {r.model} answered in {time.perf_counter() - inicio:.1f} s "
+          f"({len(texto)} characters, finish reason: {eleccion.finish_reason})", flush=True)
     return texto, r.model
 
 
 def limpiar_historial(crudo):
-    """Convierte el historial que manda el navegador en mensajes seguros para la IA.
-    Solo acepta los roles esperados, recorta el texto y quita las citas viejas [n],
-    porque esos números se referían a las fuentes de preguntas anteriores."""
+    """Turns the history sent by the browser into safe messages for the AI.
+    Only accepts the expected roles, trims the text and removes old citations [n],
+    because those numbers referred to the sources of previous questions."""
     if not isinstance(crudo, list):
         return []
     mensajes = []
@@ -219,28 +228,28 @@ def ultima_pregunta(historial):
 
 
 class LimiteDeUso(Exception):
-    """Se agotaron las consultas permitidas por el proveedor de IA."""
+    """The requests allowed by the AI provider have run out."""
 
 
 def avisar_limite(error):
-    """Muestra en la terminal el motivo exacto que dio OpenRouter."""
-    print(f"[FireSpace] Límite de uso de la IA alcanzado. Detalle: {error}", flush=True)
+    """Shows in the terminal the exact reason given by OpenRouter."""
+    print(f"[FireSpace] AI usage limit reached. Details: {error}", flush=True)
 
 
 def es_limite_de_uso(error):
     return "RateLimit" in type(error).__name__ or "429" in str(error)
 
 
-# Reacciones y expresiones cortas: van directo a la conversación, sin buscar en la biblioteca.
+# Short reactions and expressions: they go straight to the conversation, without searching the library.
 PATRON_REACCION = re.compile(
-    r"^(ja(ja)*|je(je)*|ji(ji)*|xd+|lol|wow+|guau+|alatorre+|no manches|no mames|orale|chale|"
-    r"que padre|que chido|que locura|que loco|increible|impresionante|genial|cool|"
-    r"neta|en serio|a poco|ok|okay|va|sale|vale|ya veo|interesante|nombre|uff+|o+h+|a+h+)\b"
+    r"^(ha(ha)*|he(he)*|lol+|lmao|rofl|xd+|wow+|whoa+|omg|no way|cool|awesome|amazing|incredible|"
+    r"impressive|nice|great|crazy|insane|seriously|really|for real|ok|okay|got it|i see|interesting|"
+    r"neat|sweet|damn|oh+|ah+|huh)\b"
 )
 
 
 def clasificar_sin_ia(pregunta):
-    """Modo ahorro: detecta la conversación con patrones; la búsqueda usará el glosario."""
+    """Saving mode: detects small talk with patterns; the search will use the glossary."""
     texto = biblioteca.sin_acentos(pregunta.lower()).strip(" ¿?¡!.,")
     if PATRON_CONVERSACION.search(texto):
         return "META", ""
@@ -250,13 +259,13 @@ def clasificar_sin_ia(pregunta):
 
 
 def clasificar(pregunta, anterior=""):
-    """Devuelve ("META", "") si el mensaje es sobre el asistente,
-    o ("BIBLIOTECA", palabras_clave_en_ingles) si es una pregunta para buscar en las fuentes."""
+    """Returns ("META", "") if the message is about the assistant,
+    or ("BIBLIOTECA", english_keywords) if it is a question to search in the sources."""
     try:
         texto, _ = generar(
             [{"role": "system", "content": PROMPT_CLASIFICAR},
-             {"role": "user", "content": (f"Pregunta anterior (solo contexto): {anterior}\n"
-                                          f"Mensaje actual: {pregunta}") if anterior else pregunta}],
+             {"role": "user", "content": (f"Previous question (context only): {anterior}\n"
+                                          f"Current message: {pregunta}") if anterior else pregunta}],
             temperatura=0,
             max_tokens=MAX_TOKENS_CLASIFICAR,
         )
@@ -264,17 +273,17 @@ def clasificar(pregunta, anterior=""):
         if es_limite_de_uso(e):
             avisar_limite(e)
             raise LimiteDeUso() from e
-        app.logger.exception("No se pudo clasificar la pregunta")
-        return "BIBLIOTECA", ""  # si falla, se busca solo con la pregunta original
+        app.logger.exception("Could not classify the question")
+        return "BIBLIOTECA", ""  # if it fails, search only with the original question
     if texto.strip().upper().startswith("META"):
         return "META", ""
     if not texto.strip():
-        print("[FireSpace] La IA no devolvió palabras clave; se usa el glosario de respaldo", flush=True)
+        print("[FireSpace] The AI returned no keywords; the backup glossary is used", flush=True)
     return "BIBLIOTECA", texto
 
 
 def siglas_de_experimentos(documentos):
-    """Siglas que aparecen entre paréntesis en los títulos, ej. "(FLEX)" -> FLEX."""
+    """Acronyms that appear in parentheses in the titles, e.g. "(FLEX)" -> FLEX."""
     siglas = set()
     for _, titulo in documentos:
         for sigla in re.findall(r"\(([A-Z][^)]*)\)", titulo):
@@ -285,9 +294,9 @@ def siglas_de_experimentos(documentos):
 
 
 def ficha_del_asistente():
-    """Datos reales sobre el asistente y su biblioteca, para que la IA hable de sí misma sin inventar."""
+    """Real facts about the assistant and its library, so the AI can talk about itself without making things up."""
     documentos = biblioteca.catalogo()
-    por_fuente = Counter(via or "Lista oficial del reto" for via, _ in documentos)
+    por_fuente = Counter(via or FUENTE_OFICIAL for via, _ in documentos)
 
     lineas_fuentes = []
     for fuente, n in por_fuente.most_common():
@@ -295,46 +304,46 @@ def ficha_del_asistente():
             lineas_fuentes.append(f"- {n} {DESCRIPCION_FUENTES[fuente]}.")
     for via, titulo in documentos:
         if via not in DESCRIPCION_FUENTES:
-            origen = via or "Lista oficial del reto"
+            origen = via or FUENTE_OFICIAL
             lineas_fuentes.append(f"- {titulo} ({origen}).")
 
     return "\n".join([
-        "- Nombre: asistente de FireSpace.",
-        "- FireSpace es una plataforma web de divulgación y consulta científica sobre combustión en "
-        "microgravedad y seguridad contra incendios en la exploración espacial.",
-        "- Es un proyecto de estudiantes universitarios para el NASA Space Apps Challenge 2026. "
-        "No es un producto oficial de NASA ni está afiliado a NASA.",
-        "- Está pensado para profesores, estudiantes, investigadores e ingenieros aeroespaciales, "
-        "pero cualquier persona puede usarlo.",
-        "- Cómo funciona: ante cada pregunta busca en su biblioteca los textos más relevantes, responde "
-        "solo con ellos y marca cada dato con un número que enlaza al documento original para que el "
-        "usuario pueda verificarlo. Si la biblioteca no tiene la información, lo dice en lugar de inventarla.",
-        "- Las fuentes están en inglés; el asistente las traduce y responde en español.",
-        "- No navega por internet ni usa información fuera de su biblioteca.",
-        "- Diferencia con asistentes de IA generales (como ChatGPT): FireSpace se especializa en un solo "
-        "tema, responde basándose en fuentes oficiales de NASA y muestra los enlaces para verificar "
-        f"cada dato. Para redactar usa un modelo de lenguaje ({MODELO}) a través de OpenRouter.",
-        f"- Su biblioteca tiene {len(documentos)} documentos, todos de fuentes oficiales de NASA "
-        "indicadas por el reto:",
+        "- Name: FireSpace assistant (ApiGx).",
+        "- FireSpace is a web platform for outreach and scientific consultation about combustion in "
+        "microgravity and fire safety in space exploration.",
+        "- It is a project by university students for the NASA Space Apps Challenge 2026. "
+        "It is not an official NASA product and is not affiliated with NASA.",
+        "- It is designed for teachers, students, researchers and aerospace engineers, "
+        "but anyone can use it.",
+        "- How it works: for each question it searches its library for the most relevant texts, answers "
+        "only with them and marks each fact with a number that links to the original document so the "
+        "user can verify it. If the library does not have the information, it says so instead of making it up.",
+        "- The sources are in English and the assistant answers in English.",
+        "- It does not browse the internet or use information outside its library.",
+        "- Difference from general AI assistants (like ChatGPT): FireSpace specializes in a single "
+        "topic, answers based on official NASA sources and shows the links to verify "
+        f"each fact. To write, it uses a language model ({MODELO}) through OpenRouter.",
+        f"- Its library has {len(documentos)} documents, all from official NASA sources "
+        "listed by the challenge:",
         *lineas_fuentes,
-        f"- Experimentos que cubre: {', '.join(siglas_de_experimentos(documentos))}.",
-        "- Temas: comportamiento de las llamas sin gravedad, llamas frías, extinción y supresión de "
-        "incendios, inflamabilidad de materiales, combustión de gotas, sólidos y gases, humo y "
-        "detección de incendios en naves espaciales.",
+        f"- Experiments it covers: {', '.join(siglas_de_experimentos(documentos))}.",
+        "- Topics: how flames behave without gravity, cool flames, fire extinction and suppression, "
+        "flammability of materials, combustion of droplets, solids and gases, smoke and "
+        "fire detection in spacecraft.",
     ])
 
 
 AVISO_PRIMER_MENSAJE = (
-    "\n\nIMPORTANTE: este es el PRIMER mensaje de la conversación. No hubo mensajes anteriores: "
-    "no digas ni insinúes que ya hablaron de algo, ni retomes temas \"de antes\"."
+    "\n\nIMPORTANT: this is the FIRST message of the conversation. There were no previous messages: "
+    "do not say or imply that you already talked about something, and do not bring up topics \"from before\"."
 )
 
 
 def responder_conversacion(pregunta, historial=()):
-    """Respuesta natural a saludos o preguntas sobre el asistente, basada en la ficha."""
+    """Natural answer to greetings or questions about the assistant, based on the fact sheet."""
     sistema = PROMPT_META.format(ficha=ficha_del_asistente())
     if not historial:
-        sistema += AVISO_PRIMER_MENSAJE  # evita que la IA invente una conversación previa
+        sistema += AVISO_PRIMER_MENSAJE  # keeps the AI from inventing a previous conversation
     try:
         texto, modelo = generar(
             [{"role": "system", "content": sistema},
@@ -349,36 +358,36 @@ def responder_conversacion(pregunta, historial=()):
         if es_limite_de_uso(e):
             avisar_limite(e)
         else:
-            app.logger.exception("No se pudo generar la respuesta conversacional")
-    return respuesta_sobre_el_asistente(), None  # respaldo si la IA falla
+            app.logger.exception("Could not generate the conversational answer")
+    return respuesta_sobre_el_asistente(), None  # backup if the AI fails
 
 
 def respuesta_sobre_el_asistente():
-    """Describe lo que sabe el asistente a partir de la biblioteca real (no lo inventa la IA)."""
+    """Describes what the assistant knows from the real library (not made up by the AI)."""
     documentos = biblioteca.catalogo()
-    por_fuente = Counter(via or "Lista oficial del reto" for via, _ in documentos)
-    detalle = ", ".join(f"{n} de {fuente}" for fuente, n in por_fuente.most_common())
+    por_fuente = Counter(via or FUENTE_OFICIAL for via, _ in documentos)
+    detalle = ", ".join(f"{n} from {fuente}" for fuente, n in por_fuente.most_common())
 
     experimentos = ", ".join(siglas_de_experimentos(documentos))
 
     return (
-        "Soy el asistente de FireSpace. Respondo preguntas sobre combustión en el espacio usando "
-        f"únicamente una biblioteca de fuentes oficiales de NASA: {len(documentos)} documentos "
+        "I'm the FireSpace assistant. I answer questions about combustion in space using "
+        f"only a library of official NASA sources: {len(documentos)} documents "
         f"({detalle}).\n\n"
-        "Puedo ayudarte con temas como:\n"
-        "- Cómo se comportan las llamas sin gravedad (forma, llamas frías, extinción).\n"
-        "- Seguridad contra incendios en naves espaciales.\n"
-        "- Combustión de gotas de combustible, materiales sólidos y gases en la Estación Espacial.\n"
-        "- El humo y la detección de incendios en el espacio.\n"
-        + (f"- Los experimentos de NASA: {experimentos}.\n" if experimentos else "")
-        + "\nPrueba con preguntas como «¿Qué es el experimento Saffire?» o "
-        "«¿Por qué las llamas son esféricas en microgravedad?». "
-        "Si algo no está en mis fuentes, te lo diré en lugar de inventarlo."
+        "I can help you with topics like:\n"
+        "- How flames behave without gravity (shape, cool flames, extinction).\n"
+        "- Fire safety in spacecraft.\n"
+        "- Combustion of fuel droplets, solid materials and gases on the Space Station.\n"
+        "- Smoke and fire detection in space.\n"
+        + (f"- NASA experiments: {experimentos}.\n" if experimentos else "")
+        + "\nTry questions like \"What is the Saffire experiment?\" or "
+        "\"Why are flames spherical in microgravity?\". "
+        "If something is not in my sources, I'll tell you instead of making it up."
     )
 
 
 def validar_citas(texto, total):
-    """Quita las citas que no corresponden a ningún fragmento y devuelve (texto, citados)."""
+    """Removes citations that do not match any fragment and returns (text, cited)."""
     citados = set()
 
     def reemplazar(coincidencia):
@@ -387,23 +396,23 @@ def validar_citas(texto, total):
         citados.update(validos)
         return "".join(f"[{n}]" for n in validos)
 
-    # Acepta [2], [1][3] y también [1, 3]
+    # Accepts [2], [1][3] and also [1, 3]
     texto = re.sub(r"\[(\d+(?:\s*,\s*\d+)*)\]", reemplazar, texto)
     return texto, sorted(citados)
 
 
 def limpiar_redaccion(texto):
-    """Respaldo por si la IA menciona sus fuentes internas ("según las fuentes...").
-    Quita esas muletillas al inicio de las frases; las citas [n] ya indican el origen."""
-    referencia = (r"(?:las fuentes|los fragmentos|los documentos|los textos|la información "
-                  r"(?:proporcionada|disponible))(?: (?:de (?:la )?NASA|proporcionad[ao]s|consultad[ao]s|disponibles))?")
-    muletilla = re.compile(r"(^|(?<=[.!?]\s)|(?<=\n))(?:Según|De acuerdo con|Con base en|Basándome en) "
+    """Backup in case the AI mentions its internal sources ("according to the sources...").
+    Removes those filler phrases at the start of sentences; the citations [n] already show the origin."""
+    referencia = (r"(?:the sources|the fragments|the documents|the texts|the (?:provided|available) information|"
+                  r"the information (?:provided|available))(?: (?:from NASA|provided|consulted|available))?")
+    muletilla = re.compile(r"(^|(?<=[.!?]\s)|(?<=\n))(?:According to|Based on|As stated in|As shown in) "
                            + referencia + r",?\s+(\w)", re.IGNORECASE)
     return muletilla.sub(lambda m: m.group(1) + m.group(2).upper(), texto)
 
 
 def agrupar_fuentes(fragmentos, citados):
-    """Une en una sola línea las citas que apuntan al mismo documento y la misma página."""
+    """Joins into a single line the citations that point to the same document and the same page."""
     grupos = {}
     for n in citados:
         f = fragmentos[n - 1]
@@ -426,7 +435,7 @@ MARCA_PANEL = "###PANEL###"
 
 
 def separar_panel(texto):
-    """Separa la respuesta del JSON del panel. Devuelve (respuesta, datos_del_panel)."""
+    """Splits the answer from the dashboard JSON. Returns (answer, dashboard_data)."""
     if MARCA_PANEL not in texto:
         return texto, {}
     respuesta, _, resto = texto.partition(MARCA_PANEL)
@@ -436,7 +445,7 @@ def separar_panel(texto):
         try:
             datos = json.loads(resto[inicio:fin + 1])
         except ValueError:
-            print("[FireSpace] La IA devolvió un JSON de panel inválido; se ignora", flush=True)
+            print("[FireSpace] The AI returned an invalid dashboard JSON; it is ignored", flush=True)
     return respuesta.strip(), datos if isinstance(datos, dict) else {}
 
 
@@ -449,7 +458,7 @@ def numero_de_cita(valor, total):
 
 
 def corto(valor, maximo):
-    """Texto limpio y recortado (los datos de la IA nunca se usan sin limpiar)."""
+    """Clean, trimmed text (data from the AI is never used without cleaning)."""
     return " ".join(str(valor if valor is not None else "").split())[:maximo]
 
 
@@ -469,8 +478,8 @@ SUBTIPOS_GRAFICA = {"barras", "barras_horizontales", "lineas", "dona", "radar"}
 
 
 def validar_bloque(bloque, total):
-    """Revisa un bloque del tablero. Devuelve el bloque limpio, o None si no sirve.
-    Un bloque sin citas válidas se descarta: así no se cuelan datos sin respaldo."""
+    """Checks a dashboard block. Returns the clean block, or None if it is not usable.
+    A block without valid citations is dropped: that way unsupported data never gets through."""
     if not isinstance(bloque, dict):
         return None
     citas = [n for n in (numero_de_cita(c, total) for c in (bloque.get("citas") or [])) if n]
@@ -543,7 +552,7 @@ def validar_bloque(bloque, total):
 
 
 def construir_panel(pregunta, fragmentos, datos_ia):
-    """Tablero visual sobre el tema, diseñado por la IA y validado bloque por bloque."""
+    """Visual dashboard about the topic, designed by the AI and validated block by block."""
     bloques = [b for b in (validar_bloque(b, len(fragmentos)) for b in (datos_ia.get("bloques") or [])[:6]) if b]
     return {
         "consulta": pregunta,
@@ -553,25 +562,25 @@ def construir_panel(pregunta, fragmentos, datos_ia):
 
 
 def describir_fuente(fragmento):
-    texto = fragmento["via"] or "Lista oficial del reto"
+    texto = fragmento["via"] or FUENTE_OFICIAL
     if fragmento["pagina"]:
-        texto += f", pág. {fragmento['pagina']} del PDF"
+        texto += f", PDF page {fragmento['pagina']}"
     return texto
 
 
-# ---------- PÁGINAS ----------
+# ---------- PAGES ----------
 
 @app.route("/")
 def inicio():
     return render_template("inicio.html")
 
 
-@app.route("/asistente")
+@app.route("/assistant")
 def asistente():
     return render_template("asistente.html")
 
 
-@app.route("/simulacion")
+@app.route("/simulation")
 def simulacion():
     return render_template("simulacion.html")
 
@@ -584,19 +593,19 @@ def preguntar():
     pregunta = str(datos.get("pregunta", "")).strip()
 
     if not pregunta:
-        return jsonify({"ok": False, "error": "Escribe una pregunta."}), 400
+        return jsonify({"ok": False, "error": "Type a question."}), 400
     if len(pregunta) > MAX_CARACTERES_PREGUNTA:
-        return jsonify({"ok": False, "error": f"La pregunta no puede pasar de {MAX_CARACTERES_PREGUNTA} caracteres."}), 400
+        return jsonify({"ok": False, "error": f"The question cannot be longer than {MAX_CARACTERES_PREGUNTA} characters."}), 400
     if not biblioteca.disponible():
-        return jsonify({"ok": False, "error": "La biblioteca todavía no está lista."}), 503
+        return jsonify({"ok": False, "error": "The library is not ready yet."}), 503
 
     inicio = time.perf_counter()
     historial = limpiar_historial(datos.get("historial"))
     anterior = ultima_pregunta(historial)
-    print(f"[FireSpace] Mensajes anteriores recibidos: {len(historial)}"
-          + (f" (pregunta anterior: {anterior[:60]!r})" if anterior else " (primer mensaje)"), flush=True)
+    print(f"[FireSpace] Previous messages received: {len(historial)}"
+          + (f" (previous question: {anterior[:60]!r})" if anterior else " (first message)"), flush=True)
 
-    # 1. ¿Es una pregunta sobre el asistente o una pregunta para las fuentes?
+    # 1. Is it a question about the assistant or a question for the sources?
     try:
         tipo, claves = clasificar(pregunta, anterior) if CLASIFICAR_CON_IA else clasificar_sin_ia(pregunta)
     except LimiteDeUso:
@@ -605,29 +614,29 @@ def preguntar():
         texto, modelo = responder_conversacion(pregunta, historial)
         return jsonify({"ok": True, "modelo": modelo, "respuesta": texto, "fuentes": []})
 
-    # 2. Buscar en la biblioteca (palabras en inglés + la pregunta original)
-    print(f"[FireSpace] Palabras de búsqueda: {claves or '(ninguna)'}", flush=True)
+    # 2. Search the library (keywords + the original question)
+    print(f"[FireSpace] Search keywords: {claves or '(none)'}", flush=True)
     texto_busqueda = f"{claves} {pregunta}"
     if anterior and depende_de_la_anterior(pregunta):
-        texto_busqueda += f" {anterior}"  # "¿y eso por qué?" se busca junto con la pregunta anterior
+        texto_busqueda += f" {anterior}"  # "and why is that?" is searched together with the previous question
     fragmentos = biblioteca.buscar(texto_busqueda, FRAGMENTOS_POR_PREGUNTA)
-    print(f"[FireSpace] Fragmentos encontrados: {len(fragmentos)}", flush=True)
+    print(f"[FireSpace] Fragments found: {len(fragmentos)}", flush=True)
 
-    # 3. Sin documentos no hay respuesta científica: la pregunta pasa al modo conversación,
-    #    que responde sobre el asistente o explica con amabilidad que el tema no le corresponde.
+    # 3. Without documents there is no scientific answer: the question goes to chat mode,
+    #    which answers about the assistant or kindly explains that the topic is not its own.
     if not fragmentos:
         texto, modelo = responder_conversacion(pregunta, historial)
         return jsonify({"ok": True, "modelo": modelo, "respuesta": texto, "fuentes": []})
 
-    # 4. Pedir la respuesta usando solo los fragmentos encontrados
+    # 4. Ask for the answer using only the fragments found
     contexto = "\n\n".join(
-        f"[{i}] (Documento: {f['titulo']})\n{f['texto']}" for i, f in enumerate(fragmentos, start=1)
+        f"[{i}] (Document: {f['titulo']})\n{f['texto']}" for i, f in enumerate(fragmentos, start=1)
     )
     try:
         texto, modelo = generar(
             [{"role": "system", "content": PROMPT_RESPUESTA + ("" if historial else AVISO_PRIMER_MENSAJE)},
              *historial,
-             {"role": "user", "content": f"Fragmentos:\n\n{contexto}\n\nPregunta: {pregunta}"}],
+             {"role": "user", "content": f"Fragments:\n\n{contexto}\n\nQuestion: {pregunta}"}],
             temperatura=0.3,
             max_tokens=MAX_TOKENS_RESPUESTA,
         )
@@ -635,16 +644,16 @@ def preguntar():
         if es_limite_de_uso(e):
             avisar_limite(e)
             return jsonify({"ok": False, "error": MENSAJE_LIMITE}), 429
-        app.logger.exception("Error al consultar el modelo")
+        app.logger.exception("Error while querying the model")
         if "Timeout" in type(e).__name__:
-            return jsonify({"ok": False, "error": "La IA tardó demasiado en responder. Intenta de nuevo en un momento."}), 504
-        return jsonify({"ok": False, "error": "No se pudo obtener respuesta de la IA."}), 502
+            return jsonify({"ok": False, "error": "The AI took too long to answer. Try again in a moment."}), 504
+        return jsonify({"ok": False, "error": "Could not get an answer from the AI."}), 502
 
     if not texto:
-        return jsonify({"ok": False, "error": "La IA devolvió una respuesta vacía. "
-                        "Intenta de nuevo; si se repite, prueba otro modelo."}), 502
+        return jsonify({"ok": False, "error": "The AI returned an empty answer. "
+                        "Try again; if it happens again, try another model."}), 502
 
-    # 5. Validar las citas: solo se muestran fuentes que de verdad se entregaron al modelo
+    # 5. Validate the citations: only sources that were really given to the model are shown
     texto, datos_panel = separar_panel(texto)
     panel = construir_panel(pregunta, fragmentos, datos_panel)
     texto, citados = validar_citas(limpiar_redaccion(texto), len(fragmentos))
@@ -652,33 +661,33 @@ def preguntar():
         return jsonify({"ok": True, "modelo": modelo, "respuesta": texto + NOTA_SIN_CITAS,
                         "fuentes": [], "panel": panel})
 
-    print(f"[FireSpace] Pregunta respondida en {time.perf_counter() - inicio:.1f} s", flush=True)
-    # Las fuentes en las que se basa el panel también se listan, aunque el texto no las cite
+    print(f"[FireSpace] Question answered in {time.perf_counter() - inicio:.1f} s", flush=True)
+    # The sources the dashboard is based on are also listed, even if the text does not cite them
     citados = sorted(set(citados) | {n for b in panel["bloques"] for n in b["citas"]})
     fuentes = agrupar_fuentes(fragmentos, citados)
     return jsonify({"ok": True, "modelo": modelo, "respuesta": texto, "fuentes": fuentes, "panel": panel})
 
 
-# ---------- INTERPRETACIÓN DE LA SIMULACIÓN 3D ----------
+# ---------- INTERPRETATION OF THE 3D SIMULATION ----------
 
-PROMPT_INTERPRETAR = """Eres el asistente de FireSpace y analizas una llama simulada en la sección 3GX.
-Recibes las condiciones que eligió el usuario y fragmentos numerados de fuentes oficiales de NASA.
+PROMPT_INTERPRETAR = """You are the FireSpace assistant and you analyze a simulated flame in the 3GX section.
+You receive the conditions chosen by the user and numbered fragments from official NASA sources.
 
-Reglas obligatorias:
-1. Todo dato concreto (cifras, rangos de prueba, resultados, comportamientos observados, nombres de experimentos) debe venir de los fragmentos y llevar su cita entre corchetes, por ejemplo [2] o [1][3]. Nunca inventes datos, cifras ni experimentos.
-2. Los valores de la simulación (tamaño, temperatura, forma, color) vienen de un modelo ilustrativo de la página, no de un experimento: dilo si es relevante y compáralos con lo que reportan los fragmentos (por ejemplo, si el oxígeno elegido está dentro o fuera de los rangos probados).
-3. Si los fragmentos no permiten saber algo, dilo con naturalidad ("No tengo datos sobre..."). Puedes usar conocimiento científico general para explicar conceptos, sin cita y presentado como explicación, nunca como resultado de NASA.
-4. Responde en español, en texto plano sin Markdown (nada de asteriscos ni almohadillas). Los fragmentos están en inglés: tradúcelos con fidelidad. No menciones "los fragmentos" ni "las fuentes": las citas ya indican el origen.
-5. Formato EXACTO:
-NIVEL: bajo | moderado | alto | sin datos
-Qué significa: 2 a 4 frases sobre cómo se comportaría una llama así según la investigación.
-¿Representa un peligro?: 2 a 4 frases, explicando por qué según la investigación.
-Qué hacer: 2 a 4 guiones con acciones de seguridad o de control (detección, ventilación, oxígeno, supresión), cada una respaldada con cita cuando venga de la investigación.
-Sé breve y concreto."""
+Mandatory rules:
+1. Every concrete fact (figures, test ranges, results, observed behavior, experiment names) must come from the fragments and carry its citation in square brackets, for example [2] or [1][3]. Never make up data, figures or experiments.
+2. The simulation values (size, temperature, shape, color) come from an illustrative model of the page, not from an experiment: say so if relevant and compare them with what the fragments report (for example, whether the chosen oxygen level is inside or outside the tested ranges).
+3. If the fragments do not let you know something, say so naturally ("I don't have data about..."). You may use general scientific knowledge to explain concepts, without a citation and presented as explanation, never as a NASA result.
+4. Answer in English, in plain text without Markdown (no asterisks or hash signs). Do not mention "the fragments" or "the sources": the citations already show the origin.
+5. EXACT format:
+LEVEL: low | moderate | high | no data
+What it means: 2 to 4 sentences about how a flame like this would behave according to the research.
+Is it dangerous?: 2 to 4 sentences, explaining why according to the research.
+What to do: 2 to 4 hyphen bullets with safety or control actions (detection, ventilation, oxygen, suppression), each one backed by a citation when it comes from the research.
+Be brief and concrete."""
 
 COMBUSTIBLES_EN = {
-    "n-decano": "decane", "etanol": "ethanol", "n-heptano": "heptane",
-    "n-hexanol": "hexanol", "metanol": "methanol",
+    "n-decane": "decane", "ethanol": "ethanol", "n-heptane": "heptane",
+    "n-hexanol": "hexanol", "methanol": "methanol",
 }
 
 
@@ -691,7 +700,7 @@ def _numero_entre(valor, minimo, maximo, defecto):
 def interpretar_llama():
     datos = request.get_json(silent=True) or {}
     if not biblioteca.disponible():
-        return jsonify({"ok": False, "error": "La biblioteca todavía no está lista."}), 503
+        return jsonify({"ok": False, "error": "The library is not ready yet."}), 503
 
     gravedad = _numero_entre(datos.get("gravedad"), 0, 1, 1)
     oxigeno = _numero_entre(datos.get("oxigeno"), 10, 40, 21)
@@ -706,7 +715,7 @@ def interpretar_llama():
     ]
     compuestos = [c for c in compuestos if c["nombre"] and c["fraccion"] > 0]
 
-    # Búsqueda en la biblioteca (en inglés, como los documentos)
+    # Library search (in English, like the documents)
     terminos = ["flame", "fire", "microgravity" if gravedad < 0.5 else "buoyancy gravity",
                 "oxygen concentration", "flammability limits", "extinction", "spacecraft fire safety"]
     if compuestos:
@@ -716,24 +725,24 @@ def interpretar_llama():
         terminos.append("elevated oxygen enriched atmosphere")
     fragmentos = biblioteca.buscar(" ".join(terminos), FRAGMENTOS_POR_PREGUNTA)
     if not fragmentos:
-        return jsonify({"ok": False, "error": "No encontré investigaciones en la biblioteca para estas condiciones."}), 404
+        return jsonify({"ok": False, "error": "I couldn't find research in the library for these conditions."}), 404
 
     condiciones = (
-        f"- Gravedad: {gravedad:.2f} g (0 = microgravedad, 1 = Tierra)\n"
-        f"- Oxígeno en el ambiente: {oxigeno:.0f} %\n"
-        f"- Tamaño de la llama (escala 1-10): {tamano:.0f}; diámetro del quemador: {diametro:.1f} cm\n"
-        f"- Resultado del modelo ilustrativo: forma {forma or 'sin dato'}, temperatura máxima ~{temperatura:.0f} °C, color {color or 'sin dato'}\n"
-        + ("- Combustible (compuestos de PSI-68 / FLEX-2): "
+        f"- Gravity: {gravedad:.2f} g (0 = microgravity, 1 = Earth)\n"
+        f"- Ambient oxygen: {oxigeno:.0f} %\n"
+        f"- Flame size (1-10 scale): {tamano:.0f}; burner diameter: {diametro:.1f} cm\n"
+        f"- Result of the illustrative model: shape {forma or 'no data'}, maximum temperature ~{temperatura:.0f} °C, color {color or 'no data'}\n"
+        + ("- Fuel (PSI-68 / FLEX-2 compounds): "
            + ", ".join(f"{c['nombre']} {c['fraccion'] * 100:.0f} %" for c in compuestos)
-           if compuestos else "- Combustible: hidrocarburo genérico (sin compuesto elegido)")
+           if compuestos else "- Fuel: generic hydrocarbon (no compound chosen)")
     )
     contexto = "\n\n".join(
-        f"[{i}] (Documento: {f['titulo']})\n{f['texto']}" for i, f in enumerate(fragmentos, start=1)
+        f"[{i}] (Document: {f['titulo']})\n{f['texto']}" for i, f in enumerate(fragmentos, start=1)
     )
     try:
         texto, modelo = generar(
             [{"role": "system", "content": PROMPT_INTERPRETAR},
-             {"role": "user", "content": f"Condiciones elegidas:\n{condiciones}\n\nFragmentos:\n\n{contexto}"}],
+             {"role": "user", "content": f"Chosen conditions:\n{condiciones}\n\nFragments:\n\n{contexto}"}],
             temperatura=0.2,
             max_tokens=MAX_TOKENS_RESPUESTA,
         )
@@ -741,16 +750,16 @@ def interpretar_llama():
         if es_limite_de_uso(e):
             avisar_limite(e)
             return jsonify({"ok": False, "error": MENSAJE_LIMITE}), 429
-        app.logger.exception("Error al interpretar la simulación")
-        return jsonify({"ok": False, "error": "No se pudo obtener la interpretación de la IA."}), 502
+        app.logger.exception("Error while interpreting the simulation")
+        return jsonify({"ok": False, "error": "Could not get the AI interpretation."}), 502
     if not texto:
-        return jsonify({"ok": False, "error": "La IA devolvió una respuesta vacía. Intenta de nuevo."}), 502
+        return jsonify({"ok": False, "error": "The AI returned an empty answer. Try again."}), 502
 
-    nivel = "sin datos"
-    coincidencia = re.match(r"\s*NIVEL:\s*([^\n]+)", texto, re.IGNORECASE)
+    nivel = "no data"
+    coincidencia = re.match(r"\s*LEVEL:\s*([^\n]+)", texto, re.IGNORECASE)
     if coincidencia:
-        valor = biblioteca.sin_acentos(coincidencia.group(1).lower())
-        nivel = next((n for n in ("alto", "moderado", "bajo") if n in valor), "sin datos")
+        valor = coincidencia.group(1).lower()
+        nivel = next((n for n in ("high", "moderate", "low") if n in valor), "no data")
         texto = texto[coincidencia.end():].strip()
 
     texto, citados = validar_citas(limpiar_redaccion(texto), len(fragmentos))
@@ -763,7 +772,7 @@ def interpretar_llama():
 
 if __name__ == "__main__":
     clave = os.getenv("OPENROUTER_API_KEY") or ""
-    print(f"[FireSpace] Modelo: {MODELO} | Clave terminada en: ...{clave[-4:]} | "
-          f"Clasificar con IA: {'sí' if CLASIFICAR_CON_IA else 'no (modo ahorro)'} | "
-          f"Razonamiento: {RAZONAMIENTO}", flush=True)
+    print(f"[FireSpace] Model: {MODELO} | Key ending in: ...{clave[-4:]} | "
+          f"Classify with AI: {'yes' if CLASIFICAR_CON_IA else 'no (saving mode)'} | "
+          f"Reasoning: {RAZONAMIENTO}", flush=True)
     app.run(port=5000, debug=False)

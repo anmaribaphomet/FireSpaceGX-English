@@ -1,14 +1,14 @@
 """
-psi_a_txt.py - Descarga las investigaciones de combustión del repositorio PSI de NASA
-y las guarda como fuentes para la biblioteca de FireSpace.
+psi_a_txt.py - Downloads the combustion investigations from NASA's PSI repository
+and saves them as sources for the FireSpace library.
 
-Usa la misma dirección pública que usa la página de PSI para mostrar sus resultados.
-Crea un archivo data/fuentes/psi_<numero>.txt por cada investigación del área
-"Combustion Science", y guarda la respuesta original en data/psi/investigaciones.json.
+It uses the same public address the PSI page uses to show its results.
+It creates a file data/fuentes/psi_<number>.txt for each investigation in the
+"Combustion Science" area, and saves the original response in data/psi/investigaciones.json.
 
-Uso (desde la carpeta raíz del proyecto, con el entorno virtual activo):
+Usage (from the project root folder, with the virtual environment active):
     python scripts/psi_a_txt.py
-Después:
+Then:
     python scripts/ingestar_fuentes.py
 """
 
@@ -31,18 +31,18 @@ PARAMETROS = {
     "order": "desc",
 }
 
-# Enlace que se mostrará como fuente de cada investigación.
-# Si encuentras la dirección directa de la página de un estudio en PSI,
-# cambia esta plantilla ({acc} se reemplaza por el número, ej. PSI-69).
+# Link shown as the source of each investigation.
+# If you find the direct address of a study page in PSI,
+# change this template ({acc} is replaced by the number, e.g. PSI-69).
 URL_ESTUDIO = "https://psi.nasa.gov/physci/repo/data/investigations/{acc}"
 AREA_BUSCADA = "Combustion Science"
 
 CABECERAS = {
-    "User-Agent": "FireSpace/0.1 (prototipo estudiantil, NASA Space Apps Challenge)",
+    "User-Agent": "FireSpace/0.1 (student prototype, NASA Space Apps Challenge)",
     "Accept": "application/json",
 }
 
-# Campos de texto que se guardan, con el título que llevará cada sección.
+# Text fields that are saved, with the title each section will have.
 SECCIONES = [
     ("Objectives", "Objectives"),
     ("Approach", "Approach"),
@@ -60,7 +60,7 @@ def descargar(parametros_extra=None):
 
 
 def obtener_investigaciones():
-    """Descarga los resultados; si vienen incompletos, intenta pedir más por página."""
+    """Downloads the results; if they are incomplete, it tries to request more per page."""
     datos = descargar()
     total = datos["hits"]["total"]
     if len(datos["hits"]["hits"]) < total:
@@ -78,7 +78,7 @@ def texto(valor):
 
 
 def construir_txt(inv):
-    """Arma el contenido del .txt (cabecera + cuerpo) de una investigación."""
+    """Builds the content of the .txt (header + body) of an investigation."""
     acc = texto(inv.get("Accession"))
     titulo = texto(inv.get("Title"))
     sigla = texto(inv.get("Acronym"))
@@ -128,10 +128,10 @@ def main():
     try:
         datos, total = obtener_investigaciones()
     except (urllib.error.URLError, TimeoutError) as e:
-        print(f"No se pudo conectar con PSI: {e}")
+        print(f"Could not connect to PSI: {e}")
         return
     except (json.JSONDecodeError, KeyError):
-        print("PSI respondió algo inesperado (no es el formato de siempre).")
+        print("PSI returned something unexpected (not the usual format).")
         return
 
     (CARPETA_PSI / "investigaciones.json").write_text(
@@ -152,13 +152,13 @@ def main():
         print(f"  {nombre}.txt  ->  {inv.get('Title')}")
 
     print("-" * 60)
-    print(f"PSI reporta {total} resultados; se recibieron {len(resultados)}.")
+    print(f"PSI reports {total} results; {len(resultados)} were received.")
     if len(resultados) < total:
-        print(f"  Ojo: faltaron {total - len(resultados)}. Avísame para buscar cómo pedirlos.")
+        print(f"  Careful: {total - len(resultados)} were missing. Let the team know to find how to request them.")
     if otras_areas:
-        print(f"  Se omitieron por no ser de {AREA_BUSCADA}: {', '.join(otras_areas)}")
-    print(f"Investigaciones de combustión guardadas: {guardadas}")
-    print("\nAhora ejecuta: python scripts/ingestar_fuentes.py")
+        print(f"  Skipped because they are not from {AREA_BUSCADA}: {', '.join(otras_areas)}")
+    print(f"Combustion investigations saved: {guardadas}")
+    print("\nNow run: python scripts/ingestar_fuentes.py")
 
 
 if __name__ == "__main__":

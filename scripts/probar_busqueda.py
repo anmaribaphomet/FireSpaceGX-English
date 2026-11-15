@@ -1,11 +1,11 @@
 """
-probar_busqueda.py - Prueba la búsqueda dentro de la biblioteca de FireSpace.
+probar_busqueda.py - Tests the search inside the FireSpace library.
 
-Busca en data/firespace.db (creada por ingestar_fuentes.py) y muestra los
-5 documentos más relevantes. Así comprobamos que la recuperación funciona
-antes de conectarla al asistente.
+Searches data/firespace.db (created by ingestar_fuentes.py) and shows the
+5 most relevant documents. This checks that retrieval works
+before connecting it to the assistant.
 
-Uso (por ahora, con términos en inglés):
+Usage:
     python scripts/probar_busqueda.py "flame spread"
 """
 
@@ -18,22 +18,22 @@ RUTA_BD = Path(__file__).resolve().parent.parent / "data" / "firespace.db"
 
 
 def construir_consulta(texto):
-    """Convierte texto libre en una consulta FTS5 segura: "palabra1" OR "palabra2" ..."""
+    """Turns free text into a safe FTS5 query: "word1" OR "word2" ..."""
     palabras = [p for p in re.findall(r"\w+", texto.lower()) if len(p) > 1]
     return " OR ".join(f'"{p}"' for p in palabras)
 
 
 def main():
     if len(sys.argv) < 2:
-        print('Uso: python scripts/probar_busqueda.py "flame spread"')
+        print('Usage: python scripts/probar_busqueda.py "flame spread"')
         return
     if not RUTA_BD.exists():
-        print("No existe la biblioteca. Ejecuta primero: python scripts/ingestar_fuentes.py")
+        print("The library does not exist. First run: python scripts/ingestar_fuentes.py")
         return
 
     consulta = construir_consulta(" ".join(sys.argv[1:]))
     if not consulta:
-        print("Escribe al menos una palabra de búsqueda.")
+        print("Type at least one search word.")
         return
 
     con = sqlite3.connect(RUTA_BD)
@@ -52,17 +52,17 @@ def main():
     finally:
         con.close()
 
-    print(f"Consulta enviada a SQLite: {consulta}\n")
+    print(f"Query sent to SQLite: {consulta}\n")
     if not filas:
-        print("Sin resultados en la biblioteca.")
+        print("No results in the library.")
         return
 
     for numero, (titulo, anio, url, pagina, fragmento, puntaje) in enumerate(filas, start=1):
-        donde = f", página {pagina} del PDF" if pagina else ""
-        print(f"[{numero}] {titulo} ({anio or 's/f'}{donde})")
-        print(f"    Relevancia (más negativo = más relevante): {puntaje:.3f}")
-        print(f"    Extracto: {fragmento}")
-        print(f"    Ficha: {url}\n")
+        donde = f", PDF page {pagina}" if pagina else ""
+        print(f"[{numero}] {titulo} ({anio or 'n.d.'}{donde})")
+        print(f"    Relevance (more negative = more relevant): {puntaje:.3f}")
+        print(f"    Excerpt: {fragmento}")
+        print(f"    Fact sheet: {url}\n")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,27 +13,27 @@
 {% from '_macros.html' import mascota %}
 
 <div class="app" id="app">
-  <!-- PANEL LATERAL: aparece en las 3 páginas -->
-  <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
-    <button class="sidebar__menu" id="btnMenu" type="button" aria-label="Abrir menú" title="Menú">
+  <!-- SIDE PANEL: shown on all 3 pages -->
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <button class="sidebar__menu" id="btnMenu" type="button" aria-label="Open menu" title="Menu">
       <svg viewBox="0 0 24 24"><path d="M4 6h2M9 6h11M4 12h2M9 12h11M4 18h2M9 18h11"/></svg>
     </button>
-    <a class="sidebar__logo" href="{{ url_for('inicio') }}" title="Inicio">FireSpace GX</a>
+    <a class="sidebar__logo" href="{{ url_for('inicio') }}" title="Home">FireSpace GX</a>
 
     <nav class="sidebar__nav">
-      <a class="nav-item {% if request.endpoint == 'inicio' %}activo{% endif %}" href="{{ url_for('inicio') }}" title="Inicio">
+      <a class="nav-item {% if request.endpoint == 'inicio' %}activo{% endif %}" href="{{ url_for('inicio') }}" title="Home">
         <span class="nav-item__icono">
           <span class="icono-inicio">
             <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5.5h4V20"/></svg>
           </span>
         </span>
-        <span class="nav-item__texto">Inicio</span>
+        <span class="nav-item__texto">Home</span>
       </a>
-      <a class="nav-item {% if request.endpoint == 'asistente' %}activo{% endif %}" href="{{ url_for('asistente') }}" title="Asistente IA (ApiGx)">
+      <a class="nav-item {% if request.endpoint == 'asistente' %}activo{% endif %}" href="{{ url_for('asistente') }}" title="AI assistant (ApiGx)">
         <span class="nav-item__icono">{{ mascota('mascota--nav') }}</span>
         <span class="nav-item__texto">Apigx</span>
       </a>
-      <a class="nav-item {% if request.endpoint == 'simulacion' %}activo{% endif %}" href="{{ url_for('simulacion') }}" title="Simulación 3D">
+      <a class="nav-item {% if request.endpoint == 'simulacion' %}activo{% endif %}" href="{{ url_for('simulacion') }}" title="3D simulation">
         <span class="nav-item__icono">
           <svg class="icono-cubo" viewBox="0 0 48 48">
             <path class="cubo-borde" d="M24 3 42 13.5v21L24 45 6 34.5v-21z"/>
@@ -44,12 +44,12 @@
       </a>
     </nav>
 
-    <button class="sidebar__toggle" id="btnSidebar" type="button" aria-label="Contraer menú lateral">
+    <button class="sidebar__toggle" id="btnSidebar" type="button" aria-label="Collapse side menu">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m13.5 8-4 4 4 4"/></svg>
     </button>
   </aside>
 
-  <!-- CONTENIDO: cada página rellena este hueco -->
+  <!-- CONTENT: each page fills this slot -->
   <main class="contenido" id="contenido">
     {% block contenido %}{% endblock %}
   </main>

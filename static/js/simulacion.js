@@ -1,4 +1,4 @@
-/* 3GX · simulación 3D de una llama controlada por propiedades de combustión */
+/* 3GX · 3D simulation of a flame driven by combustion properties (unused Three.js prototype) */
 (async function () {
   const cont = document.getElementById('escena');
   const cat = await fetch('/api/catalogo').then((r) => r.json());
@@ -8,9 +8,9 @@
     mezcla: Object.fromEntries(cat.combustibles.map((c) => [c.id, 0])),
     oxigeno: 21, gravedad: 0, flujo: 5, presion: 101.3, entorno: 'iss',
   };
-  estado.mezcla.metano = 0.5; // llama base
+  estado.mezcla.metano = 0.5; // base flame
 
-  /* ======================= escena ======================= */
+  /* ======================= scene ======================= */
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setClearColor(0x3b3b3b);
@@ -26,7 +26,7 @@
   controls.minDistance = 2.5; controls.maxDistance = 18;
   controls.maxPolarAngle = Math.PI * 0.495;
 
-  // Suelo con rejilla estilo visor 3D (shader: líneas nítidas a cualquier distancia)
+  // Floor with a 3D-viewer grid (shader: sharp lines at any distance)
   const suelo = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.ShaderMaterial({
     transparent: true, depthWrite: false,
     extensions: { derivatives: true },
@@ -47,7 +47,7 @@
   suelo.rotation.x = -Math.PI / 2;
   scene.add(suelo);
 
-  // Quemador / gota
+  // Burner / droplet
   const quemador = new THREE.Mesh(
     new THREE.CylinderGeometry(0.16, 0.2, 0.5, 24),
     new THREE.MeshStandardMaterial({ color: 0x555a66, metalness: 0.7, roughness: 0.35 }));
@@ -59,16 +59,16 @@
   const luzLlama = new THREE.PointLight(0xffa040, 1.5, 9);
   luzLlama.position.set(0, 1.4, 0); scene.add(luzLlama);
 
-  /* ---------- llama volumétrica (raymarching) ---------- */
+  /* ---------- volumetric flame (raymarching) ---------- */
   const uniforms = {
     uTime: { value: 0 },
-    uGravedad: { value: 0 },     // 0 = microgravedad (esfera), 1 = Tierra (lágrima)
-    uFlujo: { value: 0.15 },     // arrastre lateral del flujo de ventilación
-    uTamano: { value: 0.6 },     // tamaño global
-    uHollin: { value: 0.2 },     // 0 = azul/limpia, 1 = amarilla/hollín
-    uBrillo: { value: 1.0 },     // luminosidad
-    uTurb: { value: 0.3 },       // turbulencia / parpadeo
-    uFrio: { value: 0.0 },       // componente de «llama fría»
+    uGravedad: { value: 0 },     // 0 = microgravity (sphere), 1 = Earth (teardrop)
+    uFlujo: { value: 0.15 },     // sideways drag from the ventilation flow
+    uTamano: { value: 0.6 },     // overall size
+    uHollin: { value: 0.2 },     // 0 = blue/clean, 1 = yellow/sooty
+    uBrillo: { value: 1.0 },     // luminosity
+    uTurb: { value: 0.3 },       // turbulence / flicker
+    uFrio: { value: 0.0 },       // "cool flame" component
     uInvModel: { value: new THREE.Matrix4() },
   };
   const material = new THREE.ShaderMaterial({
@@ -100,24 +100,24 @@
         return vec2(max(max(mn.x,mn.y),mn.z), min(min(mx.x,mx.y),mx.z));
       }
 
-      // Devuelve (densidad, temperatura)
+      // Returns (density, temperature)
       vec2 llama(vec3 p){
-        // espacio local: caja unitaria; centro de la llama
+        // local space: unit box; flame center
         vec3 q = p; q.y += 0.12;
         float g = uGravedad;
-        // flujo: desplaza la llama aguas abajo (x) más en la parte alta
+        // flow: pushes the flame downstream (x), more at the top
         q.x -= uFlujo * (q.y + 0.35) * (0.6 + 0.6*(1.0-g));
         float rx = 0.17 * uTamano + 0.05;
         float ry = rx * mix(1.0, 3.2, g);
         q.y -= mix(0.0, ry*0.4, g);
-        // ahusado tipo lágrima con flotación
+        // teardrop taper with buoyancy
         float h = clamp((q.y + ry*0.3)/ry, 0.0, 1.0);
         float r = rx * (1.0 - g*0.75*h*h);
         float t = uTime * (0.5 + 2.2*g);
         float n = fbm(q*vec3(6.0, 4.0, 6.0) + vec3(0.0, -t, 0.0));
         float d = length(q / vec3(r, ry, r));
         d += (n - 0.5) * (0.35 + 1.1*uTurb) ;
-        // microgravedad: cascarón esférico (difusión), Tierra: núcleo lleno
+        // microgravity: spherical shell (diffusion), Earth: filled core
         float cascaron = exp(-pow((d - 0.78)/0.22, 2.0));
         float lleno = smoothstep(1.0, 0.25, d);
         float dens = mix(cascaron, lleno, g*0.8 + 0.1);
@@ -130,10 +130,10 @@
         vec3 naranja = vec3(1.0, 0.32, 0.02);
         vec3 amarillo = vec3(1.0, 0.68, 0.18);
         vec3 hollin = mix(naranja, amarillo, smoothstep(0.2, 0.8, temp));
-        // base azul (zona de reacción) más presente cuando hay poco hollín
+        // blue base (reaction zone) stronger when there is little soot
         float base = smoothstep(0.05, -0.3, y) * (1.0 - uHollin*0.5) + pow(1.0 - uHollin, 2.0) * 0.55;
         vec3 c = mix(hollin, azul, clamp(base, 0.0, 1.0));
-        // llama fría: tono azul muy tenue
+        // cool flame: very faint blue hue
         c = mix(c, vec3(0.35, 0.55, 1.0), uFrio*0.6);
         return c;
       }
@@ -175,7 +175,7 @@
   new ResizeObserver(redimensionar).observe(cont);
   redimensionar();
 
-  /* ======================= mapeo propiedades → llama ======================= */
+  /* ======================= properties → flame mapping ======================= */
   const objetivo = {};
   function calcularObjetivo() {
     const m = estado.mezcla;
@@ -186,7 +186,7 @@
     const o2 = estado.oxigeno / 21;
     const presion = estado.presion / 101.3;
     objetivo.uTamano = total ? Math.min(1.6, 0.35 + 0.55 * Math.sqrt(total) * Math.pow(o2, 0.6) * (0.6 + 0.4 * energia)) : 0;
-    // en microgravedad hay menos hollín visible (llama más fría); más O2 → más brillo
+    // in microgravity there is less visible soot (cooler flame); more O2 → brighter
     objetivo.uHollin = Math.min(1, hollin * (0.6 + 0.6 * estado.gravedad + 0.25 * (o2 - 1)) * Math.sqrt(presion));
     objetivo.uBrillo = total ? (0.35 + 0.65 * energia) * Math.pow(o2, 0.8) * (0.55 + 0.45 * hollin + 0.2) : 0;
     objetivo.uGravedad = estado.gravedad;
@@ -211,7 +211,7 @@
     renderer.render(scene, camera);
   })();
 
-  /* ======================= panel de deslizadores ======================= */
+  /* ======================= sliders panel ======================= */
   const panel = document.getElementById('panelSliders');
   const deslizador = (clave, etiqueta, min, max, paso, valor, sufijo, nota = '') => `
     <label class="deslizador">${etiqueta} <output data-out="${clave}">${valor}${sufijo}</output>
@@ -223,13 +223,13 @@
     combustibles: () => cat.combustibles.map((c) =>
       deslizador('mezcla.' + c.id, c.nombre, 0, 1, 0.05, estado.mezcla[c.id], '', `${c.estado} · ${c.programa}`)).join(''),
     condiciones: () =>
-      deslizador('oxigeno', 'Oxígeno', 15, 40, 1, estado.oxigeno, '%', 'ISS 21% · exploración 34%') +
-      deslizador('gravedad', 'Gravedad', 0, 1, 0.01, estado.gravedad, ' g', 'Luna 0.17 · Marte 0.38') +
-      deslizador('flujo', 'Flujo de aire', 0, 40, 1, estado.flujo, ' cm/s', 'ventilación de cabina') +
-      deslizador('presion', 'Presión', 30, 110, 0.5, estado.presion, ' kPa'),
+      deslizador('oxigeno', 'Oxygen', 15, 40, 1, estado.oxigeno, '%', 'ISS 21% · exploration 34%') +
+      deslizador('gravedad', 'Gravity', 0, 1, 0.01, estado.gravedad, ' g', 'Moon 0.17 · Mars 0.38') +
+      deslizador('flujo', 'Air flow', 0, 40, 1, estado.flujo, ' cm/s', 'cabin ventilation') +
+      deslizador('presion', 'Pressure', 30, 110, 0.5, estado.presion, ' kPa'),
     entorno: () => `<div class="entornos">${Object.entries(cat.entornos).map(([k, e]) =>
       `<button class="chip" type="button" data-entorno="${k}" aria-pressed="${estado.entorno === k}">${e.nombre}</button>`).join('')}</div>
-      <p style="font-size:11px;color:#bbb;margin:10px 0 0">Aplica la gravedad, el O₂ y la presión típicos de cada zona habitable.</p>`,
+      <p style="font-size:11px;color:#bbb;margin:10px 0 0">Applies the typical gravity, O₂ and pressure of each habitable zone.</p>`,
   };
   const filtro = document.getElementById('filtro');
   const pintarPanel = () => { panel.innerHTML = vistas[filtro.value](); };
@@ -253,7 +253,7 @@
     pintarPanel(); cambio();
   });
 
-  /* ======================= análisis (modelos) ======================= */
+  /* ======================= analysis (models) ======================= */
   let temporizador, peticion = 0;
   function cambio() {
     calcularObjetivo();
@@ -276,8 +276,8 @@
     const ul = document.getElementById('anAlertas'); ul.innerHTML = '';
     r.alertas.forEach((a) => { const li = document.createElement('li'); li.textContent = a; ul.appendChild(li); });
     document.getElementById('anBases').innerHTML = r.bases.length
-      ? '<strong>Basado en:</strong> ' + r.bases.map((b) => `<span title="${b.descripcion.replace(/"/g, '&quot;')}">${b.programa}</span>`).join(' · ')
-        + '<br>Modelo heurístico demo: conectar a los modelos predictivos de ApiGx.'
+      ? '<strong>Based on:</strong> ' + r.bases.map((b) => `<span title="${b.descripcion.replace(/"/g, '&quot;')}">${b.programa}</span>`).join(' · ')
+        + '<br>Demo heuristic model: connect to the ApiGx predictive models.'
       : '';
   }
 

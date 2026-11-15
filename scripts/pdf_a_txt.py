@@ -1,15 +1,15 @@
 """
-pdf_a_txt.py - Descarga y convierte a texto los PDFs oficiales del reto.
+pdf_a_txt.py - Downloads the official challenge PDFs and converts them to text.
 
-Incluye la Guía del investigador (lista oficial del reto) y los PDFs de los
-experimentos enlazados desde la página NASA Combustion Science.
-Cada PDF se guarda en data/pdf/ y su texto en data/fuentes/<id>.txt,
-conservando el número de página de cada parte.
+Includes the Researcher's Guide (official challenge list) and the PDFs of the
+experiments linked from the NASA Combustion Science page.
+Each PDF is saved in data/pdf/ and its text in data/fuentes/<id>.txt,
+keeping the page number of each part.
 
-Antes de usarlo:
+Before using it:
     pip install pypdf
 
-Uso (desde la carpeta raíz del proyecto, con el entorno virtual activo):
+Usage (from the project root folder, with the virtual environment active):
     python scripts/pdf_a_txt.py
 """
 
@@ -21,27 +21,27 @@ from pathlib import Path
 try:
     from pypdf import PdfReader
 except ImportError:
-    print("Falta la biblioteca pypdf. Instálala con: pip install pypdf")
+    print("The pypdf library is missing. Install it with: pip install pypdf")
     sys.exit(1)
 
 RAIZ = Path(__file__).resolve().parent.parent
 CARPETA_PDF = RAIZ / "data" / "pdf"
 CARPETA_FUENTES = RAIZ / "data" / "fuentes"
 
-CABECERAS = {"User-Agent": "FireSpace/0.1 (prototipo estudiantil, NASA Space Apps Challenge)"}
+CABECERAS = {"User-Agent": "FireSpace/0.1 (student prototype, NASA Space Apps Challenge)"}
 
 COMBUSTION_SCIENCE = "NASA Combustion Science"
 BASE = "https://www.nasa.gov/wp-content/uploads/2025/07/"
 
-# id: nombre de los archivos | pdf: de dónde se descarga | url: enlace que se mostrará como fuente
-# via: desde qué fuente del reto se llega a este documento
+# id: file name | pdf: where it is downloaded from | url: link shown as the source
+# via: which challenge source this document is reached from
 FUENTES_PDF = [
     {
         "id": "guia_investigador",
         "titulo": "A Researcher's Guide to: Combustion Science",
         "pdf": "https://www.nasa.gov/wp-content/uploads/2016/05/np-2015-10-034-jsc_combustion_in_reduced_gravity-iss-mini-book-011116-508.pdf",
         "url": "https://www.nasa.gov/missions/station/a-researchers-guide-to-combustion-science/",
-        "via": "Lista oficial del reto",
+        "via": "Official challenge list",
         "anio": "2015",
     },
     {"id": "exp_acme", "titulo": "Advanced Combustion via Microgravity Experiments (ACME)",
@@ -64,17 +64,17 @@ FUENTES_PDF = [
 
 
 def descargar(url, destino):
-    """Descarga el PDF. Lanza ValueError si lo recibido no es un PDF."""
+    """Downloads the PDF. Raises ValueError if what was received is not a PDF."""
     peticion = urllib.request.Request(url, headers=CABECERAS)
     with urllib.request.urlopen(peticion, timeout=60) as respuesta:
         contenido = respuesta.read()
     if not contenido.startswith(b"%PDF"):
-        raise ValueError("lo descargado no es un PDF")
+        raise ValueError("the download is not a PDF")
     destino.write_bytes(contenido)
 
 
 def convertir(ruta_pdf, fuente):
-    """Extrae el texto página por página y escribe el .txt con su cabecera."""
+    """Extracts the text page by page and writes the .txt with its header."""
     lector = PdfReader(ruta_pdf)
     lineas = [
         f"TITULO: {fuente['titulo']}",
@@ -108,21 +108,21 @@ def main():
             try:
                 descargar(fuente["pdf"], ruta_pdf)
             except (urllib.error.URLError, TimeoutError, ValueError) as e:
-                print(f"  {fuente['id']}: NO SE PUDO DESCARGAR ({e})")
-                print(f"      Descárgalo a mano desde {fuente['pdf']}")
-                print(f"      y guárdalo como {ruta_pdf}")
+                print(f"  {fuente['id']}: COULD NOT DOWNLOAD ({e})")
+                print(f"      Download it manually from {fuente['pdf']}")
+                print(f"      and save it as {ruta_pdf}")
                 continue
 
         try:
             paginas, con_texto = convertir(ruta_pdf, fuente)
-        except Exception as e:  # pypdf puede lanzar varios tipos de error con PDFs dañados
-            print(f"  {fuente['id']}: NO SE PUDO LEER EL PDF ({e}). Bórralo y vuelve a ejecutar.")
+        except Exception as e:  # pypdf can raise several kinds of errors with damaged PDFs
+            print(f"  {fuente['id']}: COULD NOT READ THE PDF ({e}). Delete it and run again.")
             continue
 
-        aviso = "  <- ojo: sin texto, puede ser solo imágenes" if con_texto == 0 else ""
-        print(f"  {fuente['id']}: {paginas} páginas ({con_texto} con texto){aviso}")
+        aviso = "  <- careful: no text, it may be images only" if con_texto == 0 else ""
+        print(f"  {fuente['id']}: {paginas} pages ({con_texto} with text){aviso}")
 
-    print("\nListo. Ahora ejecuta: python scripts/ingestar_fuentes.py")
+    print("\nDone. Now run: python scripts/ingestar_fuentes.py")
 
 
 if __name__ == "__main__":

@@ -1,154 +1,154 @@
 {% extends "base.html" %}
 {% from '_macros.html' import mascota %}
 
-{% block titulo %}Simulación 3D · FireSpace GX{% endblock %}
+{% block titulo %}3D Simulation · FireSpace GX{% endblock %}
 
 {% block contenido %}
 <div class="sim">
-  <!-- ======================= VISOR 3D ======================= -->
+  <!-- ======================= 3D VIEWER ======================= -->
   <div class="sim__visor">
-    <!-- Gráfica 3D interactiva (Plotly). Gira, acerca y aleja con el ratón. -->
-    <div class="escena" id="grafica-llama" aria-label="Simulación 3D de una llama. Arrastra para girar, rueda para acercar."></div>
+    <!-- Interactive 3D chart (Plotly). Rotate, zoom in and out with the mouse. -->
+    <div class="escena" id="grafica-llama" aria-label="3D simulation of a flame. Drag to rotate, scroll to zoom."></div>
 
     <div class="sim-filtro">
-      <label for="filtro">Filtrar</label>
+      <label for="filtro">Filter</label>
       <div class="select">
         <select id="filtro">
-          <option value="condiciones">Condiciones</option>
-          <option value="llama">Llama y quemador</option>
-          <option value="psi68">Compuestos PSI-68 (FLEX-2)</option>
-          <option value="entorno">Entorno de misión</option>
+          <option value="condiciones">Conditions</option>
+          <option value="llama">Flame and burner</option>
+          <option value="psi68">PSI-68 compounds (FLEX-2)</option>
+          <option value="entorno">Mission environment</option>
         </select>
       </div>
     </div>
-    <p class="sim__ayuda">Arrastra para girar · rueda para acercar</p>
+    <p class="sim__ayuda">Drag to rotate · scroll to zoom</p>
   </div>
 
-  <!-- ======================= COLUMNA LATERAL ======================= -->
+  <!-- ======================= SIDE COLUMN ======================= -->
   <aside class="sim__lateral">
 
-    <!-- Parámetros (los IDs son los que lee simulacion3d.js) -->
-    <section class="panel-sliders" id="panelSliders" aria-label="Parámetros de la llama">
+    <!-- Parameters (these IDs are read by simulacion3d.js) -->
+    <section class="panel-sliders" id="panelSliders" aria-label="Flame parameters">
       <div data-grupo="condiciones">
-        <label class="deslizador" for="gravedad">Gravedad <output id="gravedad-valor">1.00 g</output>
+        <label class="deslizador" for="gravedad">Gravity <output id="gravedad-valor">1.00 g</output>
           <input type="range" id="gravedad" min="0" max="1" step="0.05" value="1">
-          <span class="mini">0 = microgravedad · 1 = gravedad terrestre</span>
+          <span class="mini">0 = microgravity · 1 = Earth gravity</span>
         </label>
-        <label class="deslizador" for="oxigeno">Oxígeno en el ambiente <output id="oxigeno-valor">21 %</output>
+        <label class="deslizador" for="oxigeno">Ambient oxygen <output id="oxigeno-valor">21 %</output>
           <input type="range" id="oxigeno" min="15" max="35" step="1" value="21">
-          <span class="mini">ISS 21 % · atmósfera de exploración 34 %</span>
+          <span class="mini">ISS 21 % · exploration atmosphere 34 %</span>
         </label>
       </div>
 
       <div data-grupo="llama" hidden>
-        <label class="deslizador" for="tamano">Tamaño de la llama <output id="tamano-valor">5</output>
+        <label class="deslizador" for="tamano">Flame size <output id="tamano-valor">5</output>
           <input type="range" id="tamano" min="1" max="10" step="1" value="5">
         </label>
-        <label class="deslizador" for="diametro-quemador">Diámetro del quemador <output id="diametro-valor">0.6 cm</output>
+        <label class="deslizador" for="diametro-quemador">Burner diameter <output id="diametro-valor">0.6 cm</output>
           <input type="range" id="diametro-quemador" min="0.2" max="2" step="0.1" value="0.6">
-          <span class="mini">Si no conoces el diámetro real, déjalo en 0,6 cm (mechero pequeño de laboratorio). Al cambiarlo, la altura y el ancho en cm se recalculan en la misma proporción; la forma y la temperatura no cambian.</span>
+          <span class="mini">If you don't know the real diameter, leave it at 0.6 cm (small lab burner). When you change it, the height and width in cm are recalculated in the same proportion; the shape and temperature do not change.</span>
         </label>
       </div>
 
       <div data-grupo="psi68" hidden>
         <p class="mini-nota" style="margin-top:0">
-          <b>PSI-68 · FLEX-2</b> (ISS, MDCA): combustión de gotas. Sus palabras clave incluyen
-          <b>n-decano</b> y <b>etanol</b>, y en la configuración FLEX-2 se probaron mezclas 50/50 de
-          <b>n-heptano/etanol</b> y <b>n-hexanol/n-decano</b>.
+          <b>PSI-68 · FLEX-2</b> (ISS, MDCA): droplet combustion. Its keywords include
+          <b>n-decane</b> and <b>ethanol</b>, and 50/50 mixtures of <b>n-heptane/ethanol</b> and
+          <b>n-hexanol/n-decane</b> were tested in the FLEX-2 configuration.
         </p>
-        <label class="deslizador">n-Decano <output data-salida="decano">0 %</output>
-          <input type="range" min="0" max="1" step="0.05" value="0" data-compuesto="decano" data-nombre="n-Decano" data-hollin="0.8">
-          <span class="mini">alcano · forma mucho hollín</span>
+        <label class="deslizador">n-Decane <output data-salida="decano">0 %</output>
+          <input type="range" min="0" max="1" step="0.05" value="0" data-compuesto="decano" data-nombre="n-Decane" data-hollin="0.8">
+          <span class="mini">alkane · forms a lot of soot</span>
         </label>
-        <label class="deslizador">Etanol <output data-salida="etanol">0 %</output>
-          <input type="range" min="0" max="1" step="0.05" value="0" data-compuesto="etanol" data-nombre="Etanol" data-hollin="0.15">
-          <span class="mini">alcohol · forma poco hollín</span>
+        <label class="deslizador">Ethanol <output data-salida="etanol">0 %</output>
+          <input type="range" min="0" max="1" step="0.05" value="0" data-compuesto="etanol" data-nombre="Ethanol" data-hollin="0.15">
+          <span class="mini">alcohol · forms little soot</span>
         </label>
-        <label class="deslizador">n-Heptano <output data-salida="heptano">0 %</output>
-          <input type="range" min="0" max="1" step="0.05" value="0" data-compuesto="heptano" data-nombre="n-Heptano" data-hollin="0.75">
-          <span class="mini">alcano · forma mucho hollín</span>
+        <label class="deslizador">n-Heptane <output data-salida="heptano">0 %</output>
+          <input type="range" min="0" max="1" step="0.05" value="0" data-compuesto="heptano" data-nombre="n-Heptane" data-hollin="0.75">
+          <span class="mini">alkane · forms a lot of soot</span>
         </label>
         <label class="deslizador">n-Hexanol <output data-salida="hexanol">0 %</output>
           <input type="range" min="0" max="1" step="0.05" value="0" data-compuesto="hexanol" data-nombre="n-Hexanol" data-hollin="0.45">
-          <span class="mini">alcohol de cadena larga · hollín intermedio</span>
+          <span class="mini">long-chain alcohol · intermediate soot</span>
         </label>
         <div class="entornos entornos--2">
-          <button class="chip" type="button" data-mezcla='{"heptano":0.5,"etanol":0.5}'>50/50 n-heptano / etanol</button>
-          <button class="chip" type="button" data-mezcla='{"hexanol":0.5,"decano":0.5}'>50/50 n-hexanol / n-decano</button>
-          <button class="chip" type="button" data-mezcla='{}'>Sin compuesto</button>
+          <button class="chip" type="button" data-mezcla='{"heptano":0.5,"etanol":0.5}'>50/50 n-heptane / ethanol</button>
+          <button class="chip" type="button" data-mezcla='{"hexanol":0.5,"decano":0.5}'>50/50 n-hexanol / n-decane</button>
+          <button class="chip" type="button" data-mezcla='{}'>No compound</button>
         </div>
-        <p class="mini-nota">El compuesto cambia cuánto hollín forma la llama y, por eso, su color visible.
-          La tendencia es cualitativa (los alcanos forman más hollín que los alcoholes); en este modelo
-          la temperatura no depende del compuesto. FLEX-2 probó O₂ de 10 a 40 % y presiones de 0.5 a 3 atm.</p>
+        <p class="mini-nota">The compound changes how much soot the flame forms and, therefore, its visible color.
+          The trend is qualitative (alkanes form more soot than alcohols); in this model the temperature does
+          not depend on the compound. FLEX-2 tested O₂ from 10 to 40 % and pressures from 0.5 to 3 atm.</p>
       </div>
 
       <div data-grupo="entorno" hidden>
         <div class="entornos">
-          <button class="chip" type="button" data-gravedad="0" data-oxigeno="21">Estación Espacial (0 g · 21 %)</button>
-          <button class="chip" type="button" data-gravedad="0" data-oxigeno="34">Nave de exploración (0 g · 34 %)</button>
-          <button class="chip" type="button" data-gravedad="0.15" data-oxigeno="21">Luna (≈0.17 g)</button>
-          <button class="chip" type="button" data-gravedad="0.4" data-oxigeno="21">Marte (≈0.38 g)</button>
-          <button class="chip" type="button" data-gravedad="1" data-oxigeno="21">Tierra (1 g · 21 %)</button>
+          <button class="chip" type="button" data-gravedad="0" data-oxigeno="21">Space Station (0 g · 21 %)</button>
+          <button class="chip" type="button" data-gravedad="0" data-oxigeno="34">Exploration spacecraft (0 g · 34 %)</button>
+          <button class="chip" type="button" data-gravedad="0.15" data-oxigeno="21">Moon (≈0.17 g)</button>
+          <button class="chip" type="button" data-gravedad="0.4" data-oxigeno="21">Mars (≈0.38 g)</button>
+          <button class="chip" type="button" data-gravedad="1" data-oxigeno="21">Earth (1 g · 21 %)</button>
         </div>
-        <p class="mini-nota">Aplica la gravedad y el oxígeno de cada zona (redondeados al paso del deslizador).</p>
+        <p class="mini-nota">Applies the gravity and oxygen of each zone (rounded to the slider step).</p>
       </div>
     </section>
 
-    <!-- Resultado del modelo (los IDs son los que rellena simulacion3d.js) -->
+    <!-- Model result (these IDs are filled by simulacion3d.js) -->
     <section class="sim-tarjeta" id="panelAnalisis" aria-live="polite">
       <div class="sim-tarjeta__cab">
-        <h2>Resultado del modelo</h2>
-        <button class="btn-plegar" type="button" data-plegar aria-label="Plegar">–</button>
+        <h2>Model result</h2>
+        <button class="btn-plegar" type="button" data-plegar aria-label="Collapse">–</button>
       </div>
       <div class="sim-tarjeta__cuerpo">
-        <p class="aviso-sim"><b>Visualización ilustrativa.</b> Esta simulación es una representación visual y no un cálculo físico riguroso.</p>
+        <p class="aviso-sim"><b>Illustrative visualization.</b> This simulation is a visual representation and not a rigorous physical calculation.</p>
         <dl class="resultado">
-          <dt>Forma</dt><dd id="info-forma">—</dd>
-          <dt>Altura estimada</dt><dd id="info-altura">—</dd>
-          <dt>Ancho estimado</dt><dd id="info-ancho">—</dd>
-          <dt>Temperatura máxima</dt><dd id="info-temperatura">—</dd>
-          <dt>Combustible</dt><dd id="info-combustible">—</dd>
-          <dt>Color dominante</dt><dd><span id="info-color">—</span> — <span id="info-color-explicacion">—</span></dd>
-          <dt>Oxígeno</dt><dd id="info-oxigeno">—</dd>
-          <dt>Quemador</dt><dd id="info-quemador">—</dd>
+          <dt>Shape</dt><dd id="info-forma">—</dd>
+          <dt>Estimated height</dt><dd id="info-altura">—</dd>
+          <dt>Estimated width</dt><dd id="info-ancho">—</dd>
+          <dt>Maximum temperature</dt><dd id="info-temperatura">—</dd>
+          <dt>Fuel</dt><dd id="info-combustible">—</dd>
+          <dt>Dominant color</dt><dd><span id="info-color">—</span> — <span id="info-color-explicacion">—</span></dd>
+          <dt>Oxygen</dt><dd id="info-oxigeno">—</dd>
+          <dt>Burner</dt><dd id="info-quemador">—</dd>
         </dl>
         <details class="mas-info">
-          <summary>Escala</summary>
+          <summary>Scale</summary>
           <p>
-            Las medidas están en <b>cm (aprox.)</b>: 1 unidad de la gráfica = 1 cm.
-            La escala se ancla en el diámetro del quemador que elijas
-            (0,6 cm por defecto): con tamaño 5, 1 g y 21 % de oxígeno la llama
-            mide ~8 cm de alto y ~3 cm de ancho, como una llama pequeña de
-            laboratorio. Si pones un quemador del doble de diámetro, la llama
-            mide el doble de alto y de ancho; si es la mitad, mide la mitad.
+            Measurements are in <b>cm (approx.)</b>: 1 chart unit = 1 cm.
+            The scale is anchored to the burner diameter you choose
+            (0.6 cm by default): with size 5, 1 g and 21 % oxygen the flame
+            is ~8 cm tall and ~3 cm wide, like a small lab flame.
+            If you set a burner twice as wide, the flame is twice as tall
+            and wide; if it is half, the flame is half.
           </p>
         </details>
         <details class="mas-info">
-          <summary>¿Cómo se calcula el color?</summary>
+          <summary>How is the color calculated?</summary>
           <p>
-            Lo que brilla amarillo/naranja en una llama es <b>hollín incandescente</b>, que emite como un
-            cuerpo negro: su color se calcula con la <b>ley de Planck</b> y las funciones de color
-            <b>CIE 1931</b> para la temperatura de cada punto, y la barra lateral muestra esos mismos colores
-            en el rango de temperaturas de tu llama. El <b>azul</b> es la emisión de los radicales
-            <b>CH*</b> (~431 nm) y <b>C₂*</b> (~516 nm) en la zona de reacción y solo domina cuando el combustible forma poco hollín,
-            como el metanol de FLEX («very dim blue flame»). El brillo en pantalla se ajusta como lo haría una
-            cámara; el tono no se modifica.
+            What glows yellow/orange in a flame is <b>incandescent soot</b>, which emits like a black body:
+            its color is calculated with <b>Planck's law</b> and the <b>CIE 1931</b> color matching functions
+            for the temperature of each point, and the side bar shows those same colors over the temperature
+            range of your flame. The <b>blue</b> is the emission of the <b>CH*</b> (~431 nm) and <b>C₂*</b>
+            (~516 nm) radicals in the reaction zone, and it only dominates when the fuel forms little soot, like
+            the methanol in FLEX ("very dim blue flame"). Brightness on screen is adjusted the way a camera
+            would; the hue is not changed.
           </p>
         </details>
       </div>
     </section>
 
-    <!-- Interpretación de la IA (aparte del resultado del modelo) -->
+    <!-- AI interpretation (separate from the model result) -->
     <section class="sim-tarjeta sim-ia" id="panelIA" aria-live="polite">
       <div class="sim-tarjeta__cab">
         {{ mascota() }}
-        <h2>Interpretación de ApiGx</h2>
-        <button class="btn-plegar" type="button" data-plegar aria-label="Plegar">–</button>
+        <h2>ApiGx interpretation</h2>
+        <button class="btn-plegar" type="button" data-plegar aria-label="Collapse">–</button>
       </div>
       <div class="sim-tarjeta__cuerpo">
-        <p class="sim-ia__intro">ApiGx busca en las investigaciones de NASA de la biblioteca qué pasaría con una llama en
-          estas condiciones, si representa un peligro y qué hacer.</p>
-        <button class="boton boton--primario sim-ia__boton" type="button" id="btnInterpretar">Interpretar estas condiciones</button>
+        <p class="sim-ia__intro">ApiGx searches the NASA research in the library to find out what would happen to a flame
+          under these conditions, whether it is dangerous, and what to do.</p>
+        <button class="boton boton--primario sim-ia__boton" type="button" id="btnInterpretar">Interpret these conditions</button>
         <p class="sim-ia__estado" id="iaEstado" hidden></p>
         <div class="sim-ia__resultado" id="iaResultado" hidden>
           <span class="nivel" id="iaNivel"></span>

@@ -1,19 +1,20 @@
 """
-ingestar_fuentes.py - Llena la biblioteca de FireSpace SOLO con las fuentes del reto.
+ingestar_fuentes.py - Fills the FireSpace library ONLY with the challenge sources.
 
-Lee todos los archivos .txt de data/fuentes/. Cada archivo debe empezar así:
+Reads every .txt file in data/fuentes/. Each file must start like this
+(the header keys TITULO/URL/VIA/ANIO are fixed identifiers):
 
-    TITULO: Título de la página o documento
-    URL: https://enlace-oficial-de-la-fuente
-    VIA: NASA Combustion Science   (desde qué fuente del reto se llegó; opcional)
-    ANIO: 2015                     (opcional)
+    TITULO: Title of the page or document
+    URL: https://official-link-of-the-source
+    VIA: NASA Combustion Science   (which challenge source it was reached from; optional)
+    ANIO: 2015                     (year; optional)
     ---
-    Aquí va el texto copiado de la fuente...
+    The text copied from the source goes here...
 
-El texto se divide en fragmentos de ~1000 caracteres y se guarda en data/firespace.db.
-Cada vez que se ejecuta, RECONSTRUYE la biblioteca desde cero.
+The text is split into fragments of ~1000 characters and saved in data/firespace.db.
+Every time it runs, it REBUILDS the library from scratch.
 
-Uso (desde la carpeta raíz del proyecto, con el entorno virtual activo):
+Usage (from the project root folder, with the virtual environment active):
     python scripts/ingestar_fuentes.py
 """
 
@@ -27,22 +28,22 @@ RAIZ = Path(__file__).resolve().parent.parent
 CARPETA_FUENTES = RAIZ / "data" / "fuentes"
 RUTA_BD = RAIZ / "data" / "firespace.db"
 
-TAM_FRAGMENTO = 1000   # caracteres aproximados por fragmento
-MIN_FRAGMENTO = 40     # fragmentos más cortos (ej. un número de página suelto) se ignoran
+TAM_FRAGMENTO = 1000   # approximate characters per fragment
+MIN_FRAGMENTO = 40     # shorter fragments (e.g. a lone page number) are ignored
 
-# Marca de página que escribe pdf_a_txt.py, por ejemplo: === PAGINA 12 ===
+# Page marker written by pdf_a_txt.py, for example: === PAGINA 12 ===
 MARCA_PAGINA = re.compile(r"^=== PAGINA (\d+) ===\s*$", re.MULTILINE)
 SEPARADOR = re.compile(r"^\s*---\s*$", re.MULTILINE)
 
 
-# ---------- LECTURA DE ARCHIVOS ----------
+# ---------- READING FILES ----------
 
 def leer_fuente(ruta):
-    """Separa la cabecera (TITULO, URL, ANIO) del texto. Lanza ValueError si falta algo."""
+    """Splits the header (TITULO, URL, ANIO) from the text. Raises ValueError if something is missing."""
     contenido = ruta.read_text(encoding="utf-8-sig")
     partes = SEPARADOR.split(contenido, maxsplit=1)
     if len(partes) < 2:
-        raise ValueError("falta la línea --- que separa la cabecera del texto")
+        raise ValueError("the --- line that separates the header from the text is missing")
     cabecera, cuerpo = partes
 
     datos = {}
@@ -52,16 +53,16 @@ def leer_fuente(ruta):
             datos[clave.strip().upper()] = valor.strip()
 
     if not datos.get("TITULO") or not datos.get("URL"):
-        raise ValueError("la cabecera necesita TITULO y URL")
+        raise ValueError("the header needs TITULO and URL")
     if not datos["URL"].startswith("https://"):
-        raise ValueError("la URL debe empezar con https://")
+        raise ValueError("the URL must start with https://")
     return datos, cuerpo
 
 
-# ---------- DIVISIÓN EN FRAGMENTOS ----------
+# ---------- SPLITTING INTO FRAGMENTS ----------
 
 def secciones_por_pagina(cuerpo):
-    """Devuelve [(pagina, texto), ...]. Si el texto no tiene marcas de página, pagina es None."""
+    """Returns [(page, text), ...]. If the text has no page markers, page is None."""
     partes = MARCA_PAGINA.split(cuerpo)
     secciones = [(None, partes[0])]
     for i in range(1, len(partes), 2):
@@ -70,17 +71,17 @@ def secciones_por_pagina(cuerpo):
 
 
 def dividir_en_fragmentos(cuerpo):
-    """Agrupa oraciones hasta ~TAM_FRAGMENTO caracteres, sin mezclar páginas distintas."""
+    """Groups sentences up to ~TAM_FRAGMENTO characters, without mixing different pages."""
     fragmentos = []
     for pagina, texto in secciones_por_pagina(cuerpo):
-        texto = re.sub(r"-\n(?=\w)", "", texto)    # une palabras cortadas: "combus-\ntion"
-        texto = re.sub(r"\s+", " ", texto).strip()  # quita saltos de línea y espacios extra
+        texto = re.sub(r"-\n(?=\w)", "", texto)    # joins split words: "combus-\ntion"
+        texto = re.sub(r"\s+", " ", texto).strip()  # removes line breaks and extra spaces
         if not texto:
             continue
 
         actual = ""
         for oracion in re.split(r"(?<=[.!?])\s+", texto):
-            # Una "oración" enorme (sin puntos) se corta en trozos.
+            # A huge "sentence" (without periods) is cut into pieces.
             for trozo in textwrap.wrap(oracion, TAM_FRAGMENTO) or [""]:
                 if actual and len(actual) + len(trozo) + 1 > TAM_FRAGMENTO:
                     fragmentos.append((pagina, actual))
@@ -93,7 +94,7 @@ def dividir_en_fragmentos(cuerpo):
     return [(p, t) for p, t in fragmentos if len(t) >= MIN_FRAGMENTO]
 
 
-# ---------- BASE DE DATOS ----------
+# ---------- DATABASE ----------
 
 def fts5_disponible(con):
     try:
@@ -110,11 +111,11 @@ def crear_tablas(con):
         DROP TABLE IF EXISTS documentos;
 
         CREATE TABLE documentos (
-            id            TEXT PRIMARY KEY,   -- nombre del archivo, ej. "apollo_1"
+            id            TEXT PRIMARY KEY,   -- file name, e.g. "apollo_1"
             titulo        TEXT NOT NULL,
             url           TEXT NOT NULL,
             anio          TEXT,
-            via           TEXT,               -- fuente del reto desde la que se llegó
+            via           TEXT,               -- challenge source it was reached from
             archivo       TEXT NOT NULL,
             fecha_ingesta TEXT
         );
@@ -129,27 +130,27 @@ def crear_tablas(con):
     """)
 
 
-# ---------- PROGRAMA PRINCIPAL ----------
+# ---------- MAIN PROGRAM ----------
 
 def main():
     if not CARPETA_FUENTES.exists():
         CARPETA_FUENTES.mkdir(parents=True)
-        print(f"Creé la carpeta {CARPETA_FUENTES}. Pon ahí los .txt de las fuentes y vuelve a ejecutar.")
+        print(f"Created the folder {CARPETA_FUENTES}. Put the source .txt files there and run again.")
         return
 
     archivos = sorted(CARPETA_FUENTES.glob("*.txt"))
     if not archivos:
-        print(f"No hay archivos .txt en {CARPETA_FUENTES}.")
+        print(f"There are no .txt files in {CARPETA_FUENTES}.")
         return
 
     con = sqlite3.connect(RUTA_BD)
     try:
         if not fts5_disponible(con):
-            print("Tu versión de SQLite no tiene FTS5. Avísame y buscamos otra opción.")
+            print("Your SQLite version does not have FTS5. Let the team know so we can find another option.")
             return
 
         crear_tablas(con)
-        print(f"Biblioteca reiniciada en: {RUTA_BD}\n")
+        print(f"Library reset at: {RUTA_BD}\n")
 
         documentos = 0
         total_fragmentos = 0
@@ -157,15 +158,15 @@ def main():
             try:
                 datos, cuerpo = leer_fuente(ruta)
             except ValueError as e:
-                print(f"  {ruta.name}: SE OMITE ({e})")
+                print(f"  {ruta.name}: SKIPPED ({e})")
                 continue
             except UnicodeDecodeError:
-                print(f"  {ruta.name}: SE OMITE (guárdalo con codificación UTF-8)")
+                print(f"  {ruta.name}: SKIPPED (save it with UTF-8 encoding)")
                 continue
 
             fragmentos = dividir_en_fragmentos(cuerpo)
             if not fragmentos:
-                print(f"  {ruta.name}: SE OMITE (no tiene texto)")
+                print(f"  {ruta.name}: SKIPPED (it has no text)")
                 continue
 
             id_doc = ruta.stem
@@ -173,12 +174,12 @@ def main():
                 "INSERT INTO documentos (id, titulo, url, anio, via, archivo, fecha_ingesta) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (id_doc, datos["TITULO"], datos["URL"], datos.get("ANIO"),
-                 datos.get("VIA", "Lista oficial del reto"), ruta.name,
+                 datos.get("VIA", "Official challenge list"), ruta.name,
                  datetime.now(timezone.utc).isoformat(timespec="seconds")),
             )
             for orden, (pagina, texto) in enumerate(fragmentos):
                 if orden == 0:
-                    texto = f"{datos['TITULO']}\n\n{texto}"  # el título ayuda a encontrarlo
+                    texto = f"{datos['TITULO']}\n\n{texto}"  # the title helps to find it
                 con.execute(
                     "INSERT INTO fragmentos (documento_id, orden, pagina, texto) VALUES (?, ?, ?, ?)",
                     (id_doc, orden, pagina, texto),
@@ -186,11 +187,11 @@ def main():
 
             documentos += 1
             total_fragmentos += len(fragmentos)
-            print(f"  {ruta.name}: {len(fragmentos)} fragmentos  ->  {datos['TITULO']}")
+            print(f"  {ruta.name}: {len(fragmentos)} fragments  ->  {datos['TITULO']}")
 
         con.commit()
         print("-" * 60)
-        print(f"Biblioteca lista: {documentos} documentos, {total_fragmentos} fragmentos.")
+        print(f"Library ready: {documentos} documents, {total_fragmentos} fragments.")
     finally:
         con.close()
 

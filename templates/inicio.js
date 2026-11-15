@@ -1,4 +1,4 @@
-/* Dashboard de ejemplo (PSI-68) de la página de inicio */
+/* Sample dashboard (PSI-68) of the home page — old unused version; the active one is static/js/inicio.js */
 (async function () {
   FSGX.configurarChart();
   const [ej, cat] = await Promise.all([
@@ -9,7 +9,7 @@
   const umbral = ej.umbral_riesgo;
   document.getElementById('avisoDemo').textContent = ej.aviso;
 
-  // 1) Liberación de calor por ensayo -------------------------------------
+  // 1) Heat release per test -------------------------------------
   new Chart(document.getElementById('gCalor'), {
     type: 'line',
     data: {
@@ -24,14 +24,14 @@
       })),
     },
     options: {
-      scales: { y: { min: 0, max: 100, title: { display: true, text: 'Calor relativo (0-100)' } } },
-      plugins: { umbral: { valor: umbral, texto: `Umbral de riesgo (${umbral})` } },
+      scales: { y: { min: 0, max: 100, title: { display: true, text: 'Relative heat (0-100)' } } },
+      plugins: { umbral: { valor: umbral, texto: `Risk threshold (${umbral})` } },
       interaction: { mode: 'index', intersect: false },
     },
     plugins: [FSGX.pluginUmbral],
   });
 
-  // 2) KPIs de pico -------------------------------------------------------
+  // 2) Peak KPIs -------------------------------------------------------
   const kpis = document.getElementById('kpisEjemplo');
   ej.combustibles.forEach((id) => {
     const max = Math.max(...ej.calor[id]);
@@ -44,7 +44,7 @@
     FSGX.anillo(el.querySelector('canvas'), max, 100, max >= umbral ? '#ff7a1a' : '#22d3ee');
   });
 
-  // 3) Componentes del índice --------------------------------------------
+  // 3) Index components --------------------------------------------
   const cl = (v) => Math.max(0, Math.min(1, v));
   const comps = ej.combustibles.map((id) => {
     const c = porId[id];
@@ -55,17 +55,17 @@
       ene: 25 * cl(c.dhc / 50),
     };
   });
-  const capas = [['vol', 'Volatilidad', '#ff4d5e'], ['rea', 'Reactividad', '#ff7a1a'], ['ran', 'Rango inflamable', '#ffc93c'], ['ene', 'Energía', '#22d3ee']];
+  const capas = [['vol', 'Volatility', '#ff4d5e'], ['rea', 'Reactivity', '#ff7a1a'], ['ran', 'Flammable range', '#ffc93c'], ['ene', 'Energy', '#22d3ee']];
   new Chart(document.getElementById('gComponentes'), {
     type: 'bar',
     data: {
       labels: ej.combustibles.map((id) => porId[id].nombre),
       datasets: capas.map(([k, n, col]) => ({ label: n, data: comps.map((c) => +c[k].toFixed(1)), backgroundColor: col, borderRadius: 3, barPercentage: 0.6 })),
     },
-    options: { scales: { x: { stacked: true }, y: { stacked: true, max: 100, title: { display: true, text: 'Índice (0-100)' } } } },
+    options: { scales: { x: { stacked: true }, y: { stacked: true, max: 100, title: { display: true, text: 'Index (0-100)' } } } },
   });
 
-  // 4) Sensibilidad al oxígeno -------------------------------------------
+  // 4) Sensitivity to oxygen -------------------------------------------
   new Chart(document.getElementById('gOxigeno'), {
     type: 'bubble',
     data: {
@@ -76,13 +76,13 @@
       })),
     },
     options: {
-      scales: { x: { min: 15, max: 36, title: { display: true, text: 'O₂ (%)' } }, y: { min: 0, max: 100, title: { display: true, text: 'Calor relativo' } } },
-      plugins: { umbral: { valor: umbral, texto: 'Pico de riesgo' } },
+      scales: { x: { min: 15, max: 36, title: { display: true, text: 'O₂ (%)' } }, y: { min: 0, max: 100, title: { display: true, text: 'Relative heat' } } },
+      plugins: { umbral: { valor: umbral, texto: 'Risk peak' } },
     },
     plugins: [FSGX.pluginUmbral],
   });
 
-  // 5) Rangos de inflamabilidad ------------------------------------------
+  // 5) Flammability ranges ------------------------------------------
   const rangos = document.getElementById('rangosEjemplo');
   const escala = 40;
   ej.combustibles.forEach((id) => {
@@ -94,13 +94,13 @@
       </div>`);
   });
 
-  // Resumen: ¿qué cantidad representa un pico de riesgo? ------------------
+  // Summary: what amount is a risk peak? ------------------
   const frases = ej.combustibles.map((id) => {
     const k = ej.calor[id].findIndex((v) => v >= umbral);
-    return k >= 0 ? `${porId[id].nombre} desde ${ej.oxigeno[k]}% O₂` : null;
+    return k >= 0 ? `${porId[id].nombre} from ${ej.oxigeno[k]}% O₂` : null;
   }).filter(Boolean);
   document.getElementById('resumenPico').innerHTML = frases.length
-    ? `<strong style="color:#ffa24d">Pico de riesgo:</strong> superaron el umbral ${frases.join(', ')}.`
-      + (ej.combustibles.includes('metanol') && Math.max(...ej.calor.metanol) < umbral ? ' El metanol nunca lo superó en esta serie, pero su llama casi invisible complica la detección.' : '')
-    : 'Ningún compuesto superó el umbral de riesgo en esta serie.';
+    ? `<strong style="color:#ffa24d">Risk peak:</strong> exceeded the threshold: ${frases.join(', ')}.`
+      + (ej.combustibles.includes('metanol') && Math.max(...ej.calor.metanol) < umbral ? ' Methanol never exceeded it in this series, but its almost invisible flame makes it hard to detect.' : '')
+    : 'No compound exceeded the risk threshold in this series.';
 })();

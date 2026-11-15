@@ -1,49 +1,49 @@
 {% extends "base.html" %}
 {% from '_macros.html' import mascota, grafica %}
 
-{% block titulo %}Asistente IA · FireSpace GX{% endblock %}
+{% block titulo %}AI Assistant · FireSpace GX{% endblock %}
 
 {% set icono_filtro %}<svg viewBox="0 0 24 24"><path d="M3 6h7M14 6h7M3 12h3M10 12h11M3 18h11M18 18h3"/><circle cx="12" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>{% endset %}
 {% set icono_enviar %}<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>{% endset %}
 
-{# Los modos muestran preguntas sugeridas de cada tipo (no cambian cómo responde el servidor) #}
+{# The modes show suggested questions of each kind (they do not change how the server answers) #}
 {% set modos %}
-  <button class="modo" type="button" data-modo="consultar" aria-pressed="true">Consultar<small>Preguntas abiertas sobre combustión</small></button>
-  <button class="modo" type="button" data-modo="investigaciones" aria-pressed="false">Investigaciones<small>Experimentos y estudios de NASA</small></button>
-  <button class="modo" type="button" data-modo="resultados" aria-pressed="false">Resultados<small>Mediciones y conclusiones</small></button>
+  <button class="modo" type="button" data-modo="consultar" aria-pressed="true">Ask<small>Open questions about combustion</small></button>
+  <button class="modo" type="button" data-modo="investigaciones" aria-pressed="false">Research<small>NASA experiments and studies</small></button>
+  <button class="modo" type="button" data-modo="resultados" aria-pressed="false">Results<small>Measurements and conclusions</small></button>
 {% endset %}
 
 {% block contenido %}
 <div class="asistente" id="asistente">
 
 
-  <!-- =============== ESTADO 1: bienvenida =============== -->
+  <!-- =============== STATE 1: welcome =============== -->
   <section class="bienvenida">
     {{ mascota() }}
-    <h1>¿Por dónde empezamos?</h1>
+    <h1>Where should we start?</h1>
 
     <form class="menu-wrap" data-form-consulta>
       <div class="pill">
-        <button class="pill__filtro" type="button" aria-label="Ver tipos de pregunta" data-abrir-modos>{{ icono_filtro }}</button>
-        <input type="text" name="pregunta" maxlength="800" placeholder="Preguntar a ApiGx" autocomplete="off" aria-label="Pregunta para ApiGx">
-        <button class="pill__enviar" type="submit" aria-label="Enviar">{{ icono_enviar }}</button>
+        <button class="pill__filtro" type="button" aria-label="Show question types" data-abrir-modos>{{ icono_filtro }}</button>
+        <input type="text" name="pregunta" maxlength="800" placeholder="Ask ApiGx" autocomplete="off" aria-label="Question for ApiGx">
+        <button class="pill__enviar" type="submit" aria-label="Send">{{ icono_enviar }}</button>
       </div>
     </form>
 
-    <div class="modos" role="group" aria-label="Tipo de pregunta">{{ modos }}</div>
+    <div class="modos" role="group" aria-label="Question type">{{ modos }}</div>
     <div class="ejemplos" data-ejemplos></div>
   </section>
 
-  <!-- =============== ESTADO 2/3: chat + dashboard =============== -->
+  <!-- =============== STATE 2/3: chat + dashboard =============== -->
   <section class="sesion">
     <div class="chat">
       <header class="chat__cab">
         <div style="display:flex;align-items:center;gap:10px">
-          <button class="chat__titulo" type="button" id="nueva" title="Nueva conversación">
-            <span id="tituloChat">Nueva consulta</span>
+          <button class="chat__titulo" type="button" id="nueva" title="New conversation">
+            <span id="tituloChat">New query</span>
             <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
           </button>
-          <button class="chip chat__toggle-movil" type="button" data-toggle-dash>Ver dashboard</button>
+          <button class="chip chat__toggle-movil" type="button" data-toggle-dash>View dashboard</button>
         </div>
         <div class="chat__linea"></div>
       </header>
@@ -52,75 +52,75 @@
 
       <form class="chat__entrada" data-form-consulta>
         <div class="menu-modos" hidden>
-          <div role="group" aria-label="Tipo de pregunta">{{ modos }}</div>
+          <div role="group" aria-label="Question type">{{ modos }}</div>
           <div class="ejemplos ejemplos--menu" data-ejemplos></div>
         </div>
         <div class="pill">
-          <button class="pill__filtro" type="button" aria-label="Ver tipos de pregunta" data-abrir-modos>{{ icono_filtro }}</button>
-          <input type="text" name="pregunta" maxlength="800" placeholder="Preguntar a ApiGx" autocomplete="off" aria-label="Pregunta para ApiGx">
-          <button class="pill__enviar" type="submit" aria-label="Enviar">{{ icono_enviar }}</button>
+          <button class="pill__filtro" type="button" aria-label="Show question types" data-abrir-modos>{{ icono_filtro }}</button>
+          <input type="text" name="pregunta" maxlength="800" placeholder="Ask ApiGx" autocomplete="off" aria-label="Question for ApiGx">
+          <button class="pill__enviar" type="submit" aria-label="Send">{{ icono_enviar }}</button>
         </div>
       </form>
     </div>
 
-    <aside class="dash" aria-label="Dashboard generado con la conversación">
-      <button class="dash__toggle" type="button" data-toggle-dash aria-label="Expandir dashboard">
+    <aside class="dash" aria-label="Dashboard built from the conversation">
+      <button class="dash__toggle" type="button" data-toggle-dash aria-label="Expand dashboard">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m13.5 8-4 4 4 4"/></svg>
       </button>
       <div class="dash__cuerpo">
         <div class="dash__cab">
           <h2 class="titulo-dash">Dashboard</h2>
-          <p class="dash__fuente">Se construye con las fuentes y temas de esta conversación</p>
+          <p class="dash__fuente">Built from the sources and topics of this conversation</p>
         </div>
 
         <div class="dash__grid">
-          <!-- Tablero sobre el tema, diseñado por la IA en el servidor (campo "panel" de /api/preguntar) -->
+          <!-- Dashboard about the topic, designed by the AI on the server ("panel" field of /api/preguntar) -->
           <section class="panel-ia completa" id="panelIA" hidden aria-live="polite"></section>
 
-          <!-- Fuentes reales citadas por ApiGx -->
+          <!-- Real sources cited by ApiGx -->
           <div class="ancha">
-            {{ grafica('dFuentes', 'Documentos citados',
-              'cada barra es un documento de la biblioteca de FireSpace y su largo es cuántas veces lo citó ApiGx en esta conversación. Los más citados son los que más sostienen las respuestas: ábrelos en la lista de fuentes para verificar.') }}
+            {{ grafica('dFuentes', 'Cited documents',
+              'each bar is a document from the FireSpace library and its length is how many times ApiGx cited it in this conversation. The most cited ones are the ones that support the answers the most: open them from the source list to verify.') }}
           </div>
 
-          {{ grafica('dOrigen', 'Origen de las fuentes',
-            'proporción de citas según el repositorio de NASA del que viene cada documento (PSI, NASA Combustion Science o la lista oficial del reto).') }}
+          {{ grafica('dOrigen', 'Origin of the sources',
+            'share of citations by the NASA repository each document comes from (PSI, NASA Combustion Science or the official challenge list).') }}
 
-          {{ grafica('dExperimentos', 'Experimentos mencionados',
-            'cuántas veces aparece cada experimento (ACME, FLEX, SAFFIRE…) en tus preguntas y en las respuestas. Sirve para ver en qué investigaciones se está centrando la conversación.') }}
+          {{ grafica('dExperimentos', 'Experiments mentioned',
+            'how many times each experiment (ACME, FLEX, SAFFIRE…) appears in your questions and in the answers. It shows which research the conversation is focusing on.') }}
 
-          <!-- Combustibles: aparece cuando se mencionan -->
+          <!-- Fuels: shown when they are mentioned -->
           <div class="controles" id="panelCombustibles" hidden>
-            <h3>Combustibles mencionados</h3>
+            <h3>Fuels mentioned</h3>
             <div class="controles__chips" id="chipsCombustibles"></div>
-            <label class="deslizador">Cantidad de combustible <output id="oCantidad">50%</output>
+            <label class="deslizador">Amount of fuel <output id="oCantidad">50%</output>
               <input type="range" id="rCantidad" min="0" max="100" value="50">
             </label>
-            <label class="deslizador">Oxígeno en cabina <output id="oOxigeno">21%</output>
+            <label class="deslizador">Cabin oxygen <output id="oOxigeno">21%</output>
               <input type="range" id="rOxigeno" min="15" max="40" value="21">
             </label>
             <div class="estado-riesgo" id="estadoRiesgo">—</div>
-            <p class="aviso-demo" style="margin:8px 0 0">Índice ilustrativo calculado con propiedades de referencia aproximadas; no proviene de las fuentes citadas.</p>
+            <p class="aviso-demo" style="margin:8px 0 0">Illustrative index calculated from approximate reference properties; it does not come from the cited sources.</p>
           </div>
 
           <div class="ancha" data-solo-combustibles hidden>
-            {{ grafica('dCurva', 'Riesgo según la cantidad',
-              'el eje horizontal es la cantidad de combustible y el vertical un índice de riesgo ilustrativo. La línea punteada marca la cantidad elegida. Cuando una curva entra en la franja roja, ese compuesto ya representa un peligro con esa cantidad y ese oxígeno.') }}
+            {{ grafica('dCurva', 'Risk by amount',
+              'the horizontal axis is the amount of fuel and the vertical axis an illustrative risk index. The dashed line marks the chosen amount. When a curve enters the red band, that compound is already a hazard with that amount and that oxygen level.') }}
           </div>
 
           <div data-solo-combustibles hidden>
             <figure class="grafica">
-              <figcaption class="grafica__titulo">Rango de inflamabilidad
-                <button class="grafica__ayuda" type="button" aria-label="Cómo interpretar" data-ayuda>?</button>
+              <figcaption class="grafica__titulo">Flammability range
+                <button class="grafica__ayuda" type="button" aria-label="How to read it" data-ayuda>?</button>
               </figcaption>
               <div class="rangos" id="dRangos"></div>
-              <p class="grafica__leyenda"><strong>Cómo leerla:</strong> la barra va del límite inferior al superior de
-                inflamabilidad en aire (% vol). Dentro de ese tramo la mezcla puede encenderse.</p>
+              <p class="grafica__leyenda"><strong>How to read it:</strong> the bar goes from the lower to the upper flammability
+                limit in air (% vol). Within that range the mixture can ignite.</p>
             </figure>
           </div>
         </div>
 
-        <p class="dash__vacio" id="dashVacio">Haz una pregunta y aquí aparecerán las gráficas de la conversación.</p>
+        <p class="dash__vacio" id="dashVacio">Ask a question and the charts of the conversation will show up here.</p>
       </div>
     </aside>
   </section>

@@ -1,15 +1,15 @@
-/* FireSpace GX · controles de la simulación 3D.
-   - Filtro: muestra un grupo de deslizadores a la vez.
-   - Entornos de misión y mezclas de PSI-68: mueven los mismos deslizadores
-     que lee simulacion3d.js (con un evento "input"), así redibuja igual que a mano.
-   - Interpretación de ApiGx: pide a /api/interpretar-llama una lectura de las
-     condiciones basada en las investigaciones de NASA de la biblioteca. */
+/* FireSpace GX · 3D simulation controls.
+   - Filter: shows one group of sliders at a time.
+   - Mission environments and PSI-68 mixtures: they move the same sliders
+     read by simulacion3d.js (with an "input" event), so it redraws just like by hand.
+   - ApiGx interpretation: asks /api/interpretar-llama for a reading of the
+     conditions based on the NASA research in the library. */
 (function () {
   "use strict";
 
   var filtro = document.getElementById("filtro");
   var grupos = document.querySelectorAll("[data-grupo]");
-  var ultimaLlama = window.__ultimaLlama || null; // parámetros del último dibujo (evento fsgx:llama)
+  var ultimaLlama = window.__ultimaLlama || null; // parameters of the last drawing (fsgx:llama event)
 
   function mostrarGrupo() {
     grupos.forEach(function (g) { g.hidden = g.dataset.grupo !== filtro.value; });
@@ -22,7 +22,7 @@
     el.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
-  // ---------- Entornos de misión ----------
+  // ---------- Mission environments ----------
   function marcarEntorno() {
     var g = parseFloat(document.getElementById("gravedad").value);
     var o = parseFloat(document.getElementById("oxigeno").value);
@@ -42,7 +42,7 @@
   });
   marcarEntorno();
 
-  // ---------- Compuestos de PSI-68 ----------
+  // ---------- PSI-68 compounds ----------
   var compuestos = document.querySelectorAll("input[data-compuesto]");
   function actualizarSalidas() {
     compuestos.forEach(function (el) {
@@ -56,11 +56,11 @@
       var mezcla = JSON.parse(b.dataset.mezcla);
       compuestos.forEach(function (el) { el.value = mezcla[el.dataset.compuesto] || 0; });
       actualizarSalidas();
-      fijar(compuestos[0], compuestos[0].value); // un solo redibujo
+      fijar(compuestos[0], compuestos[0].value); // a single redraw
     });
   });
 
-  // ---------- Plegar tarjetas ----------
+  // ---------- Collapse cards ----------
   document.querySelectorAll("[data-plegar]").forEach(function (b) {
     b.addEventListener("click", function () {
       var plegado = b.closest(".sim-tarjeta").classList.toggle("plegado");
@@ -68,7 +68,7 @@
     });
   });
 
-  // Al contraer/expandir el menú lateral, Plotly se reajusta al nuevo ancho.
+  // When the side menu is collapsed/expanded, Plotly adjusts to the new width.
   window.addEventListener("fsgx:layout", function () {
     setTimeout(function () {
       if (window.Plotly) Plotly.Plots.resize("grafica-llama");
@@ -76,7 +76,7 @@
   });
 
   /* =====================================================================
-     INTERPRETACIÓN DE APIGX
+     APIGX INTERPRETATION
      ===================================================================== */
   var boton = document.getElementById("btnInterpretar");
   var estado = document.getElementById("iaEstado");
@@ -103,8 +103,8 @@
   window.addEventListener("fsgx:llama", function (e) {
     ultimaLlama = e.detail;
     if (firmaInterpretada && firmaInterpretada !== firma(condiciones())) {
-      mostrarEstado("Cambiaste las condiciones: vuelve a interpretar para actualizar el análisis.");
-      boton.textContent = "Interpretar de nuevo";
+      mostrarEstado("You changed the conditions: interpret again to update the analysis.");
+      boton.textContent = "Interpret again";
     }
   });
 
@@ -120,7 +120,7 @@
     });
   }
 
-  // Texto plano -> párrafos/listas; "Qué significa:" etc. en negritas; [n] -> enlace a la fuente
+  // Plain text -> paragraphs/lists; "What it means:" etc. in bold; [n] -> link to the source
   function formatear(texto, fuentes) {
     var mapa = {};
     fuentes.forEach(function (f) { String(f.id).split(",").forEach(function (n) { mapa[n.trim()] = f; }); });
@@ -140,7 +140,7 @@
       if (!t) return;
       if (/^[-•]\s+/.test(t)) { lista.push("<li>" + citas(escapar(t.replace(/^[-•]\s+/, ""))) + "</li>"); return; }
       cerrar();
-      var e = citas(escapar(t)).replace(/^(Qué significa:|¿Representa un peligro\?:|Qué hacer:)/, "<b>$1</b>");
+      var e = citas(escapar(t)).replace(/^(What it means:|Is it dangerous\?:|What to do:)/, "<b>$1</b>");
       html.push("<p>" + e + "</p>");
     });
     cerrar();
@@ -155,7 +155,7 @@
     caja.className = "fuentes-msg";
     var t = document.createElement("p");
     t.className = "fuentes-msg__titulo";
-    t.textContent = "De dónde sale:";
+    t.textContent = "Where it comes from:";
     var ul = document.createElement("ul");
     fuentes.forEach(function (f) {
       var li = document.createElement("li");
@@ -174,14 +174,14 @@
   }
 
   var NIVELES = {
-    alto: "Peligro alto", moderado: "Peligro moderado", bajo: "Peligro bajo", "sin datos": "Sin datos suficientes",
+    high: "High danger", moderate: "Moderate danger", low: "Low danger", "no data": "Not enough data",
   };
 
   boton.addEventListener("click", async function () {
     if (boton.disabled) return;
     var c = condiciones();
     boton.disabled = true;
-    boton.textContent = "Consultando investigaciones…";
+    boton.textContent = "Checking the research…";
     mostrarEstado("");
     try {
       var r = await fetch("/api/interpretar-llama", {
@@ -190,22 +190,22 @@
         body: JSON.stringify(c),
       });
       var d;
-      try { d = await r.json(); } catch (e) { d = { ok: false, error: "el servidor respondió algo inesperado (código " + r.status + ")." }; }
+      try { d = await r.json(); } catch (e) { d = { ok: false, error: "the server returned something unexpected (code " + r.status + ")." }; }
       if (!d.ok) throw new Error(d.error || "Error");
 
       var nivel = document.getElementById("iaNivel");
-      nivel.textContent = NIVELES[d.nivel] || NIVELES["sin datos"];
+      nivel.textContent = NIVELES[d.nivel] || NIVELES["no data"];
       nivel.className = "nivel nivel--" + d.nivel.replace(" ", "-");
       document.getElementById("iaTexto").innerHTML =
         formatear(d.interpretacion, d.fuentes || []) +
-        (d.sin_citas ? '<p class="aviso-sim">Esta interpretación no cita ninguna investigación de la biblioteca; tómala como explicación general.</p>' : "");
+        (d.sin_citas ? '<p class="aviso-sim">This interpretation does not cite any research from the library; take it as a general explanation.</p>' : "");
       pintarFuentes(d.fuentes || []);
       resultado.hidden = false;
       firmaInterpretada = firma(c);
-      boton.textContent = "Interpretar de nuevo";
+      boton.textContent = "Interpret again";
     } catch (err) {
-      mostrarEstado("No se pudo interpretar: " + err.message, true);
-      boton.textContent = "Interpretar estas condiciones";
+      mostrarEstado("Could not interpret: " + err.message, true);
+      boton.textContent = "Interpret these conditions";
     } finally {
       boton.disabled = false;
     }
